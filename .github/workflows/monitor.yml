@@ -1,0 +1,44 @@
+name: Monitor Dólar Oficial (Java)
+
+on:
+  schedule:
+    # Corre cada 10 minutos. GitHub no garantiza el minuto exacto,
+    # puede demorar unos minutos extra en horarios de mucha carga.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # te permite dispararlo a mano desde la pestaña "Actions"
+
+permissions:
+  contents: write   # necesario para poder guardar el último valor en el repo
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Compilar
+        run: javac DolarMonitor.java
+
+      - name: Consultar dólar y avisar si cambió
+        env:
+          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+          UMBRAL_PESOS: "1"
+          UMBRAL_PORCENTAJE: "0"
+          CAMPO: "venta"
+        run: java DolarMonitor
+
+      - name: Guardar el último valor en el repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ultimo_valor.json
+          git diff --staged --quiet || git commit -m "Actualiza último valor del dólar [skip ci]"
+          git push
