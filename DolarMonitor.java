@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +51,7 @@ public class DolarMonitor {
     private static final Path ARCHIVO_HISTORIAL = Path.of("historial.json");
     private static final Path ARCHIVO_PAGINA = Path.of("docs/index.html");
     private static final int MAX_HISTORIAL = 30;
+    private static final ZoneId ZONA_HORARIA = ZoneId.of("America/Argentina/Buenos_Aires");
     private static final DateTimeFormatter FORMATO_FECHA =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -343,7 +345,7 @@ public class DolarMonitor {
     }
 
     private static String ahora() {
-        return LocalDateTime.now().format(FORMATO_FECHA);
+        return LocalDateTime.now(ZONA_HORARIA).format(FORMATO_FECHA);
     }
 
     private static String capitalizar(String s) {
