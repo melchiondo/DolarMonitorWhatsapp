@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dólar oficial → WhatsApp</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px;
+         margin: 0 auto; padding: 48px 16px; }
+  header p { color: #888; margin: 0 0 4px; font-size: 14px; }
+  h1 { margin: 4px 0 8px; font-size: 24px; }
+  .subt { color: #888; font-size: 14px; margin-bottom: 24px; }
+  .card { border: 1px solid #8883; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+  .valor { display: flex; justify-content: space-between; align-items: baseline; }
+  .valor .num { font-size: 32px; font-weight: 600; }
+  .fila { display: flex; justify-content: space-between; font-size: 14px; color: #888; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: #888; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #8883; }
+  td { padding: 8px 4px; border-bottom: 1px solid #8882; }
+  .aviso { color: #2a7; font-weight: 600; }
+  .sin-cambios { color: #888; }
+  .vacio { color: #888; text-align: center; padding: 16px; }
+  footer { margin-top: 24px; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+  <header>
+    <p>Monitor automático</p>
+    <h1>Dólar oficial → WhatsApp</h1>
+    <p class="subt">Corre solo en GitHub Actions cada 10 minutos. Avisa por WhatsApp cuando el valor cambia.</p>
+  </header>
+
+  <div class="card">
+    <div class="valor">
+      <span>Último valor (venta)</span>
+      <span class="num">$1,535.00</span>
+    </div>
+    <div class="fila"><span>Última actualización</span><span>24/09/2026 13:13:27</span></div>
+    <div class="fila"><span>Umbral de aviso</span><span>$1.00</span></div>
+  </div>
+
+  <h2 style="font-size:14px;color:#888;font-weight:500;">Últimos chequeos</h2>
+  <table>
+    <thead><tr><th>Fecha</th><th>Valor</th><th>Estado</th></tr></thead>
+    <tbody>
+<tr><td>24/09/2026 13:13:27</td><td>$1,535.00</td><td><span class="sin-cambios">sin cambios</span></td></tr>
+
+    </tbody>
+  </table>
+
+  <footer>Generado automáticamente por DolarMonitor.java en cada corrida de GitHub Actions.</footer>
+</body>
+</html>
