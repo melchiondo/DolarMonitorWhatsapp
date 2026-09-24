@@ -9,6 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,7 +23,9 @@ import java.util.regex.Pattern;
  *   1. Consulta la cotizacion oficial en https://dolarapi.com/v1/dolares/oficial
  *   2. La compara con el ultimo valor guardado en ultimo_valor.json
  *   3. Si la diferencia supera el umbral, manda un WhatsApp (via CallMeBot)
- *   4. Guarda el nuevo valor para la proxima corrida
+ *   4. Guarda el nuevo valor y un historial acotado (historial.json)
+ *   5. Regenera docs/index.html: una paginita de estado para publicar gratis
+ *      con GitHub Pages (Settings -> Pages -> Deploy from branch -> /docs)
  *
  * No usa librerias externas: solo java.net.http (incluido desde Java 11) y
  * un parseo de JSON con expresiones regulares, ya que la respuesta de la
@@ -42,6 +46,9 @@ public class DolarMonitor {
 
     private static final String API_URL = "https://dolarapi.com/v1/dolares/oficial";
     private static final Path ARCHIVO_ESTADO = Path.of("ultimo_valor.json");
+    private static final Path ARCHIVO_HISTORIAL = Path.of("historial.json");
+    private static final Path ARCHIVO_PAGINA = Path.of("docs/index.html");
+    private static final int MAX_HISTORIAL = 30;
     private static final DateTimeFormatter FORMATO_FECHA =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -87,8 +94,10 @@ public class DolarMonitor {
 
         if (ultimo == null) {
             guardarUltimoValor(actual);
+            registrarHistorial(actual, null, true);
             notificarWhatsapp(String.format(
                     "✅ Monitor de dolar oficial iniciado.%n%s: $%,.2f", capitalizar(campo), actual));
+            regenerarPagina(actual);
             return;
         }
 
@@ -101,10 +110,14 @@ public class DolarMonitor {
                     flecha, campo, ultimo, actual, dif, pct);
             notificarWhatsapp(texto);
             guardarUltimoValor(actual);
+            registrarHistorial(actual, dif, true);
             System.out.println("[" + ahora() + "] Alerta enviada.");
         } else {
+            registrarHistorial(actual, actual - ultimo, false);
             System.out.println("[" + ahora() + "] Sin cambios relevantes, no se avisa.");
         }
+
+        regenerarPagina(actual);
     }
 
     private String obtenerCotizacionJson() throws IOException, InterruptedException {
@@ -152,6 +165,149 @@ public class DolarMonitor {
         } catch (IOException e) {
             System.out.println("[" + ahora() + "] No pude guardar el estado: " + e.getMessage());
         }
+    }
+
+    // ---------- Historial (para la página de estado) ----------
+
+    private record Entrada(String fecha, double valor, Double variacion, boolean notifico) {}
+
+    private List<Entrada> cargarHistorial() {
+        List<Entrada> lista = new ArrayList<>();
+        try {
+            if (!Files.exists(ARCHIVO_HISTORIAL)) return lista;
+            String contenido = Files.readString(ARCHIVO_HISTORIAL, StandardCharsets.UTF_8);
+            Pattern p = Pattern.compile(
+                    "\\{\"fecha\":\"([^\"]*)\",\"valor\":([0-9.]+),\"variacion\":(null|[-0-9.]+),\"notifico\":(true|false)\\}");
+            Matcher m = p.matcher(contenido);
+            while (m.find()) {
+                String fecha = m.group(1);
+                double valor = Double.parseDouble(m.group(2));
+                Double variacion = m.group(3).equals("null") ? null : Double.parseDouble(m.group(3));
+                boolean notifico = Boolean.parseBoolean(m.group(4));
+                lista.add(new Entrada(fecha, valor, variacion, notifico));
+            }
+        } catch (IOException ignored) {
+            // Si el archivo esta corrupto o no existe, arrancamos con historial vacio.
+        }
+        return lista;
+    }
+
+    private void registrarHistorial(double valor, Double variacion, boolean notifico) {
+        List<Entrada> historial = cargarHistorial();
+        historial.add(new Entrada(ahora(), valor, variacion, notifico));
+
+        // Nos quedamos solo con las últimas MAX_HISTORIAL entradas.
+        int desde = Math.max(0, historial.size() - MAX_HISTORIAL);
+        List<Entrada> recortado = historial.subList(desde, historial.size());
+
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < recortado.size(); i++) {
+            Entrada e = recortado.get(i);
+            if (i > 0) sb.append(",");
+            sb.append(String.format(
+                    "{\"fecha\":\"%s\",\"valor\":%.2f,\"variacion\":%s,\"notifico\":%s}",
+                    e.fecha(), e.valor(),
+                    e.variacion() == null ? "null" : String.format("%.2f", e.variacion()),
+                    e.notifico()));
+        }
+        sb.append("]");
+
+        try {
+            Files.writeString(ARCHIVO_HISTORIAL, sb.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.out.println("[" + ahora() + "] No pude guardar el historial: " + e.getMessage());
+        }
+    }
+
+    // ---------- Página de estado (GitHub Pages) ----------
+
+    private void regenerarPagina(double valorActual) {
+        List<Entrada> historial = cargarHistorial();
+        List<Entrada> ordenDesc = new ArrayList<>(historial);
+        java.util.Collections.reverse(ordenDesc);
+
+        StringBuilder filas = new StringBuilder();
+        if (ordenDesc.isEmpty()) {
+            filas.append("<tr><td colspan=\"3\" class=\"vacio\">Todavía no corrió ningún chequeo.</td></tr>");
+        } else {
+            for (Entrada e : ordenDesc) {
+                String estado = e.notifico()
+                        ? "<span class=\"avisó\">Avisó ✓</span>"
+                        : "<span class=\"sin-cambios\">sin cambios</span>";
+                filas.append(String.format(
+                        "<tr><td>%s</td><td>$%,.2f</td><td>%s</td></tr>%n",
+                        escaparHtml(e.fecha()), e.valor(), estado));
+            }
+        }
+
+        String ultimaFecha = historial.isEmpty() ? "sin datos" : historial.get(historial.size() - 1).fecha();
+
+        String html = String.format("""
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Dólar oficial → WhatsApp</title>
+                <style>
+                  :root { color-scheme: light dark; }
+                  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px;
+                         margin: 0 auto; padding: 48px 16px; }
+                  header p { color: #888; margin: 0 0 4px; font-size: 14px; }
+                  h1 { margin: 4px 0 8px; font-size: 24px; }
+                  .subt { color: #888; font-size: 14px; margin-bottom: 24px; }
+                  .card { border: 1px solid #8883; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+                  .valor { display: flex; justify-content: space-between; align-items: baseline; }
+                  .valor .num { font-size: 32px; font-weight: 600; }
+                  .fila { display: flex; justify-content: space-between; font-size: 14px; color: #888; margin-top: 8px; }
+                  table { width: 100%%; border-collapse: collapse; font-size: 14px; }
+                  th { text-align: left; color: #888; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #8883; }
+                  td { padding: 8px 4px; border-bottom: 1px solid #8882; }
+                  .avisó { color: #2a7; font-weight: 600; }
+                  .sin-cambios { color: #888; }
+                  .vacio { color: #888; text-align: center; padding: 16px; }
+                  footer { margin-top: 24px; font-size: 12px; color: #888; }
+                </style>
+                </head>
+                <body>
+                  <header>
+                    <p>Monitor automático</p>
+                    <h1>Dólar oficial → WhatsApp</h1>
+                    <p class="subt">Corre solo en GitHub Actions cada 10 minutos. Avisa por WhatsApp cuando el valor cambia.</p>
+                  </header>
+
+                  <div class="card">
+                    <div class="valor">
+                      <span>Último valor (%s)</span>
+                      <span class="num">$%,.2f</span>
+                    </div>
+                    <div class="fila"><span>Última actualización</span><span>%s</span></div>
+                    <div class="fila"><span>Umbral de aviso</span><span>$%.2f</span></div>
+                  </div>
+
+                  <h2 style="font-size:14px;color:#888;font-weight:500;">Últimos chequeos</h2>
+                  <table>
+                    <thead><tr><th>Fecha</th><th>Valor</th><th>Estado</th></tr></thead>
+                    <tbody>
+                %s
+                    </tbody>
+                  </table>
+
+                  <footer>Generado automáticamente por DolarMonitor.java en cada corrida de GitHub Actions.</footer>
+                </body>
+                </html>
+                """, campo, valorActual, escaparHtml(ultimaFecha), umbralPesos, filas.toString());
+
+        try {
+            Files.createDirectories(ARCHIVO_PAGINA.getParent());
+            Files.writeString(ARCHIVO_PAGINA, html, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.out.println("[" + ahora() + "] No pude generar la página: " + e.getMessage());
+        }
+    }
+
+    private static String escaparHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private void notificarWhatsapp(String texto) {
