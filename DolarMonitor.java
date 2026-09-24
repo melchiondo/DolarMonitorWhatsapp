@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -160,7 +161,7 @@ public class DolarMonitor {
 
     private void guardarUltimoValor(double valor) {
         try {
-            String json = String.format("{\"valor\": %.2f, \"fecha\": \"%s\"}", valor, ahora());
+            String json = String.format(Locale.ROOT, "{\"valor\": %.2f, \"fecha\": \"%s\"}", valor, ahora());
             Files.writeString(ARCHIVO_ESTADO, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
             System.out.println("[" + ahora() + "] No pude guardar el estado: " + e.getMessage());
@@ -204,10 +205,10 @@ public class DolarMonitor {
         for (int i = 0; i < recortado.size(); i++) {
             Entrada e = recortado.get(i);
             if (i > 0) sb.append(",");
-            sb.append(String.format(
+            sb.append(String.format(Locale.ROOT,
                     "{\"fecha\":\"%s\",\"valor\":%.2f,\"variacion\":%s,\"notifico\":%s}",
                     e.fecha(), e.valor(),
-                    e.variacion() == null ? "null" : String.format("%.2f", e.variacion()),
+                    e.variacion() == null ? "null" : String.format(Locale.ROOT, "%.2f", e.variacion()),
                     e.notifico()));
         }
         sb.append("]");
@@ -232,7 +233,7 @@ public class DolarMonitor {
         } else {
             for (Entrada e : ordenDesc) {
                 String estado = e.notifico()
-                        ? "<span class=\"avisó\">Avisó ✓</span>"
+                        ? "<span class=\"aviso\">Avisó ✓</span>"
                         : "<span class=\"sin-cambios\">sin cambios</span>";
                 filas.append(String.format(
                         "<tr><td>%s</td><td>$%,.2f</td><td>%s</td></tr>%n",
@@ -263,7 +264,7 @@ public class DolarMonitor {
                   table { width: 100%%; border-collapse: collapse; font-size: 14px; }
                   th { text-align: left; color: #888; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #8883; }
                   td { padding: 8px 4px; border-bottom: 1px solid #8882; }
-                  .avisó { color: #2a7; font-weight: 600; }
+                  .aviso { color: #2a7; font-weight: 600; }
                   .sin-cambios { color: #888; }
                   .vacio { color: #888; text-align: center; padding: 16px; }
                   footer { margin-top: 24px; font-size: 12px; color: #888; }
