@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write   # necesario para poder guardar el último valor en el repo
 
+# Si coinciden el cron de GitHub y el disparo externo, corren de a uno
+# (así no se pisan al guardar el último valor).
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -40,5 +46,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add ultimo_valor.json historial.json docs/index.html
-          git diff --staged --quiet || git commit -m "Actualiza último valor del dólar [skip ci]"
+          if git diff --staged --quiet; then
+            echo "Sin cambios, no hay nada para subir."
+            exit 0
+          fi
+          git commit -m "Actualiza último valor del dólar [skip ci]"
+          git pull --rebase
           git push

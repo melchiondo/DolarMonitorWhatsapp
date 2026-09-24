@@ -114,13 +114,12 @@ public class DolarMonitor {
             notificarWhatsapp(texto);
             guardarUltimoValor(actual);
             registrarHistorial(actual, dif, true);
+            regenerarPagina(actual);
             System.out.println("[" + ahora() + "] Alerta enviada.");
         } else {
-            registrarHistorial(actual, actual - ultimo, false);
+            // No se toca ningun archivo: asi el workflow no genera un commit por corrida.
             System.out.println("[" + ahora() + "] Sin cambios relevantes, no se avisa.");
         }
-
-        regenerarPagina(actual);
     }
 
     private String obtenerCotizacionJson() throws IOException, InterruptedException {
@@ -231,7 +230,7 @@ public class DolarMonitor {
 
         StringBuilder filas = new StringBuilder();
         if (ordenDesc.isEmpty()) {
-            filas.append("<tr><td colspan=\"3\" class=\"vacio\">Todavía no corrió ningún chequeo.</td></tr>");
+            filas.append("<tr><td colspan=\"3\" class=\"vacio\">Todavía no se registró ningún cambio.</td></tr>");
         } else {
             for (Entrada e : ordenDesc) {
                 String estado = e.notifico()
@@ -276,7 +275,7 @@ public class DolarMonitor {
                   <header>
                     <p>Monitor automático</p>
                     <h1>Dólar oficial → WhatsApp</h1>
-                    <p class="subt">Corre solo en GitHub Actions cada 10 minutos. Avisa por WhatsApp cuando el valor cambia.</p>
+                    <p class="subt">Corre en GitHub Actions cada 10 minutos. Avisa por WhatsApp y actualiza esta página solo cuando el valor cambia.</p>
                   </header>
 
                   <div class="card">
@@ -284,11 +283,11 @@ public class DolarMonitor {
                       <span>Último valor (%s)</span>
                       <span class="num">$%,.2f</span>
                     </div>
-                    <div class="fila"><span>Última actualización</span><span>%s</span></div>
+                    <div class="fila"><span>Último cambio</span><span>%s</span></div>
                     <div class="fila"><span>Umbral de aviso</span><span>$%.2f</span></div>
                   </div>
 
-                  <h2 style="font-size:14px;color:#888;font-weight:500;">Últimos chequeos</h2>
+                  <h2 style="font-size:14px;color:#888;font-weight:500;">Últimos cambios</h2>
                   <table>
                     <thead><tr><th>Fecha</th><th>Valor</th><th>Estado</th></tr></thead>
                     <tbody>
