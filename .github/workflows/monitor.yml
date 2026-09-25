@@ -1,24 +1,54 @@
-name: Monitor Dólar Oficial (Java)
+name: Monitor Dólar (Java)
 
 on:
   schedule:
-    # Corre cada 10 minutos. GitHub no garantiza el minuto exacto,
-    # puede demorar unos minutos extra en horarios de mucha carga.
-    - cron: "*/10 * * * *"
-  workflow_dispatch: {}   # te permite dispararlo a mano desde la pestaña "Actions"
+    # Solo en horario del MULC: lunes a viernes de 10 a 15 hs (Argentina).
+    # El cron de GitHub va en UTC (Argentina = UTC-3): 13 a 18 UTC.
+    #
+    # GitHub no cumple los cron de alta frecuencia (*/5, */10): bajo carga los
+    # retrasa o los saltea sin aviso. Por eso cada corrida se queda viva ~50
+    # minutos chequeando internamente cada 5, y disparamos dos veces por hora
+    # para tener redundancia si GitHub se saltea un disparo. Con el grupo de
+    # concurrency, un disparo que llega con una corrida en curso queda encolado
+    # y arranca apenas termina: la cobertura es casi continua dentro del horario.
+    #
+    # El ultimo disparo (18:00 UTC = 15:00 AR) corre hasta ~15:50 para
+    # capturar el cierre. Los feriados corre igual, pero no pasa nada.
+    - cron: "0,30 13-17 * * 1-5"
+    - cron: "0 18 * * 1-5"
+  workflow_dispatch: {}
 
 permissions:
-  contents: write   # necesario para poder guardar el último valor en el repo
+  contents: write
 
-# Si coinciden el cron de GitHub y el disparo externo, corren de a uno
-# (así no se pisan al guardar el último valor).
 concurrency:
-  group: monitor
+  group: monitor-dolar
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+      CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+
+      # --- Aviso por movimiento de cualquier cotización (sube o baja) ---
+      UMBRAL_PESOS: "1"
+      UMBRAL_PORCENTAJE: "0"
+      CAMPO: "venta"
+      CASAS: ""
+
+      # --- Tablero: tu posición en pesos vs dolarizarte ---
+      TNA_PESOS: "17.5"
+      FECHA_REFERENCIA: "03/09/2026"
+      VALOR_REFERENCIA: "1530"
+      CASA_REFERENCIA: "oficial"
+
+      ITERACIONES: "11"
+      INTERVALO_SEG: "300"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -30,26 +60,38 @@ jobs:
           java-version: "21"
 
       - name: Compilar
-        run: javac DolarMonitor.java
+        run: javac -d build DolarMonitor.java
 
-      - name: Consultar dólar y avisar si cambió
-        env:
-          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
-          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
-          UMBRAL_PESOS: "1"
-          UMBRAL_PORCENTAJE: "0"
-          CAMPO: "venta"
-        run: java DolarMonitor
-
-      - name: Guardar el último valor en el repo
+      - name: Monitorear durante ~50 minutos
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ultimo_valor.json historial.json serie.json docs/index.html
-          if git diff --staged --quiet; then
-            echo "Sin cambios, no hay nada para subir."
-            exit 0
-          fi
-          git commit -m "Actualiza último valor del dólar [skip ci]"
-          git pull --rebase
-          git push
+
+          for i in $(seq 1 "$ITERACIONES"); do
+            echo "--- Chequeo $i/$ITERACIONES ---"
+
+            java -cp build DolarMonitor || echo "El chequeo $i falló, sigo."
+
+            # De a uno: si falta alguno (ej. serie.json antes de la primera
+            # corrida), git add con todos juntos no agregaria ninguno.
+            for f in ultimo_valor.json historial.json serie.json docs/index.html; do
+              if [ -f "$f" ]; then git add -- "$f"; fi
+            done
+
+            if ! git diff --staged --quiet; then
+              git commit -q -m "Actualiza cotizaciones y tablero [skip ci]"
+              # Si el rebase choca, lo abortamos para no dejar el repo trabado:
+              # el commit queda local y se reintenta en el proximo ciclo.
+              if ! git pull --rebase --autostash -q; then
+                git rebase --abort || true
+                echo "Pull falló, reintento en el próximo ciclo."
+              fi
+              git push -q || echo "Push falló, reintento en el próximo ciclo."
+            else
+              echo "Sin novedades, no se commitea."
+            fi
+
+            if [ "$i" -lt "$ITERACIONES" ]; then
+              sleep "$INTERVALO_SEG"
+            fi
+          done
