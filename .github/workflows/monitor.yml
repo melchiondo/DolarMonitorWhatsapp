@@ -2,20 +2,15 @@ name: Monitor Dólar (Java)
 
 on:
   schedule:
-    # Solo en horario del MULC: lunes a viernes de 10 a 15 hs (Argentina).
-    # El cron de GitHub va en UTC (Argentina = UTC-3): 13 a 18 UTC.
-    #
-    # GitHub no cumple los cron de alta frecuencia (*/5, */10): bajo carga los
-    # retrasa o los saltea sin aviso. Por eso cada corrida se queda viva ~50
-    # minutos chequeando internamente cada 5, y disparamos dos veces por hora
-    # para tener redundancia si GitHub se saltea un disparo. Con el grupo de
-    # concurrency, un disparo que llega con una corrida en curso queda encolado
-    # y arranca apenas termina: la cobertura es casi continua dentro del horario.
-    #
-    # El ultimo disparo (18:00 UTC = 15:00 AR) corre hasta ~15:50 para
-    # capturar el cierre. Los feriados corre igual, pero no pasa nada.
-    - cron: "0,30 13-17 * * 1-5"
-    - cron: "0 18 * * 1-5"
+    # Lunes a viernes, 10:00 a 20:00 AR: cobertura continua.
+    # Cubre el MULC (oficial, mayorista), el MEP/CCL, y la tarde del blue,
+    # que se mueve después del cierre del mercado oficial.
+    - cron: "0,30 13-23 * * 1-5"
+    # Siempre, una ventana de ~50 min cada 3 horas: noches y fines de semana.
+    # El cripto cotiza 24/7 y el blue también se mueve los sábados.
+    # En días hábiles estos disparos quedan encolados detrás de la cobertura
+    # continua y no molestan (el concurrency deja un solo pendiente).
+    - cron: "0 */3 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -72,20 +67,11 @@ jobs:
 
             java -cp build DolarMonitor || echo "El chequeo $i falló, sigo."
 
-            # De a uno: si falta alguno (ej. serie.json antes de la primera
-            # corrida), git add con todos juntos no agregaria ninguno.
-            for f in ultimo_valor.json historial.json serie.json docs/index.html; do
-              if [ -f "$f" ]; then git add -- "$f"; fi
-            done
+            git add -- ultimo_valor.json historial.json serie.json docs/index.html 2>/dev/null || true
 
             if ! git diff --staged --quiet; then
               git commit -q -m "Actualiza cotizaciones y tablero [skip ci]"
-              # Si el rebase choca, lo abortamos para no dejar el repo trabado:
-              # el commit queda local y se reintenta en el proximo ciclo.
-              if ! git pull --rebase --autostash -q; then
-                git rebase --abort || true
-                echo "Pull falló, reintento en el próximo ciclo."
-              fi
+              git pull --rebase --autostash -q || true
               git push -q || echo "Push falló, reintento en el próximo ciclo."
             else
               echo "Sin novedades, no se commitea."
