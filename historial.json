@@ -1,1 +1,5 @@
-[{"fecha":"24/09/2026 13:13:27","valor":1535.00,"variacion":0.00,"notifico":false},{"fecha":"24/09/2026 10:20:11","valor":1535.00,"variacion":0.00,"notifico":false},{"fecha":"24/09/2026 14:19:53","valor":1540.00,"variacion":5.00,"notifico":true},{"fecha":"25/09/2026 14:19:30","valor":1545.00,"variacion":5.00,"notifico":true}]
+[
+  {"fecha":"25/09/2026 16:08:09","casa":"bolsa","nombre":"Bolsa","valor":1549.80,"variacion":-3.10},
+  {"fecha":"25/09/2026 16:08:09","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1616.10,"variacion":-2.40},
+  {"fecha":"25/09/2026 16:08:09","casa":"cripto","nombre":"Cripto","valor":1614.12,"variacion":-2.00}
+]
