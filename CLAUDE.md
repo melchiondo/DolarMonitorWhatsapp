@@ -70,6 +70,13 @@ Si la API de dolarapi falla, algún archivo puede no existir y `git add` tira
 `pathspec did not match`, haciendo fallar el paso entero. El `2>/dev/null || true`
 deja que la corrida siga y reintente en el próximo ciclo.
 
+Lo mismo con el `git pull --rebase`, pero ahí `|| true` **no alcanza**: si el
+rebase choca, el repo queda a mitad de rebase y todos los chequeos siguientes
+de esa corrida (que dura ~50 min) fallan sin subir nada. Por eso, si el pull
+falla, se hace `git rebase --abort` y se reintenta en el próximo ciclo. Con el
+loop corriendo muchas horas por día mientras se pushean cambios de código desde
+afuera, **no sacar ese `--abort`**.
+
 ### 5. Banda muerta de 0,25 puntos en el cruce de la carrera
 
 La alerta de "se dio vuelta la carrera" solo dispara cuando la ventaja supera

@@ -71,7 +71,12 @@ jobs:
 
             if ! git diff --staged --quiet; then
               git commit -q -m "Actualiza cotizaciones y tablero [skip ci]"
-              git pull --rebase --autostash -q || true
+              # Si el rebase choca, abortarlo: con "|| true" solo, el repo queda
+              # a mitad de rebase y el resto de la corrida no sube nada.
+              if ! git pull --rebase --autostash -q; then
+                git rebase --abort || true
+                echo "Pull falló, reintento en el próximo ciclo."
+              fi
               git push -q || echo "Push falló, reintento en el próximo ciclo."
             else
               echo "Sin novedades, no se commitea."
