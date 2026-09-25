@@ -1,1 +1,15 @@
-{"valor": 1545.00, "fecha": "25/09/2026 14:19:30"}
+{
+  "actualizado": "25/09/2026 15:22:58",
+  "campo": "venta",
+  "ganando": "pesos",
+  "_nota": "valor = ultima referencia avisada de cada cotizacion, no necesariamente el valor vivo",
+  "cotizaciones": [
+    {"casa":"oficial","nombre":"Oficial","valor":1545.00},
+    {"casa":"blue","nombre":"Blue","valor":1560.00},
+    {"casa":"bolsa","nombre":"Bolsa","valor":1552.90},
+    {"casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1618.50},
+    {"casa":"mayorista","nombre":"Mayorista","valor":1525.00},
+    {"casa":"cripto","nombre":"Cripto","valor":1616.12},
+    {"casa":"tarjeta","nombre":"Tarjeta","valor":2008.50}
+  ]
+}
