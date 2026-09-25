@@ -1,0 +1,3 @@
+# Archivos compilados de Java
+build/
+*.class
