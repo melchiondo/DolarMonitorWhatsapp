@@ -86,23 +86,47 @@
   <div class="card">
     <h2>La carrera</h2>
     <span class="pill pesos">Vienen ganando los pesos</span>
-    <p class="hero">$1.546,22</p>
+    <p class="hero">$1.546,96</p>
     <p class="hero-sub">Dólar de equilibrio: por encima de ese valor, haberte
     dolarizado el 03/09/2026 habría rendido más. Hoy el oficial está en
-    <strong>$1.545,00</strong> ($-1,22).</p>
+    <strong>$1.545,00</strong> ($-1,96).</p>
     <div class="metricas">
       <div class="metrica"><span class="lbl">Carry del FCI</span>
-        <span class="val">+1,06%</span></div>
+        <span class="val">+1,11%</span></div>
       <div class="metrica"><span class="lbl">Devaluación</span>
         <span class="val">+0,98%</span></div>
       <div class="metrica"><span class="lbl">Ventaja</span>
-        <span class="val">+0,08 pts</span></div>
+        <span class="val">+0,13 pts</span></div>
       <div class="metrica"><span class="lbl">Días</span>
-        <span class="val">22</span></div>
+        <span class="val">23</span></div>
     </div>
   </div>
 
-  <div class="card"><h2>Evolución</h2><p class="hero-sub">El gráfico aparece cuando haya al menos dos días de datos.</p></div>
+  <div class="card">
+    <h2>Evolución desde el 03/09/2026</h2>
+    <p class="leyenda">
+      <span><i class="sw" style="background:var(--s1)"></i>FCI en pesos</span>
+      <span><i class="sw" style="background:var(--s2)"></i>Dólar oficial</span>
+    </p>
+    <svg viewBox="0 0 640 200" role="img"
+         aria-label="Rendimiento acumulado del FCI en pesos comparado con la devaluación, desde el 03/09/2026">
+      <line x1="6" y1="158.5" x2="564.0" y2="158.5" stroke="var(--axis)" stroke-width="1"/>
+      <polyline points="6.0,35.1 564.0,29.5" fill="none" stroke="var(--s1)" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="6.0,44.4 564.0,44.4" fill="none" stroke="var(--s2)" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="572.0" y="29.5" fill="var(--s1)" font-size="12" font-weight="600"
+            dominant-baseline="middle">+1,11%</text>
+      <text x="572.0" y="44.4" fill="var(--s2)" font-size="12" font-weight="600"
+            dominant-baseline="middle">+0,98%</text>
+      <text x="6" y="192" fill="var(--muted)" font-size="11">25/09/2026</text>
+      <text x="564.0" y="192" fill="var(--muted)" font-size="11" text-anchor="end">26/09/2026</text>
+      <circle cx="6.0" cy="39.8" r="9" fill="transparent"><title>25/09/2026
+FCI +1,06% · Dólar +0,98% · $1.545,00</title></circle>
+      <circle cx="564.0" cy="36.9" r="9" fill="transparent"><title>26/09/2026
+FCI +1,11% · Dólar +0,98% · $1.545,00</title></circle>
+    </svg>
+  </div>
 
   <div class="card">
     <h2>Cotizaciones ahora</h2>
@@ -136,19 +160,19 @@
     pegarlo en una conversación y preguntar lo que quieras.</p>
     <button id="btn-copiar" type="button">Copiar contexto</button>
     <span id="copiado" role="status" aria-live="polite"></span>
-    <pre id="contexto" hidden>CONTEXTO DEL MONITOR DE DÓLAR — snapshot del 25/09/2026 18:42:13 (hora de Buenos Aires)
+    <pre id="contexto" hidden>CONTEXTO DEL MONITOR DE DÓLAR — snapshot del 26/09/2026 00:39:34 (hora de Buenos Aires)
 
 MI POSICIÓN
 - Instrumento: FCI money market en pesos, TNA declarada 17,50%
 - Rendimiento efectivo: 19,12% anual, 1,448% mensual, 0,0479% diario (capitaliza todos los días)
 - Entré el 03/09/2026, con el dólar oficial (venta) a $1.530,00
 
-LA CARRERA (carry en pesos vs devaluación), 22 días corridos
-- Carry acumulado del FCI: +1,060%
+LA CARRERA (carry en pesos vs devaluación), 23 días corridos
+- Carry acumulado del FCI: +1,109%
 - Devaluación acumulada del oficial: +0,980%
-- Ventaja de haberme quedado en pesos: +0,080 puntos porcentuales
-- Dólar de equilibrio hoy: $1.546,22 (por encima de ese valor, dolarizarme el 03/09/2026 habría rendido más)
-- Dólar oficial hoy: $1.545,00 ($-1,22 respecto del equilibrio)
+- Ventaja de haberme quedado en pesos: +0,128 puntos porcentuales
+- Dólar de equilibrio hoy: $1.546,96 (por encima de ese valor, dolarizarme el 03/09/2026 habría rendido más)
+- Dólar oficial hoy: $1.545,00 ($-1,96 respecto del equilibrio)
 - Viene ganando: el FCI en pesos
 
 COTIZACIONES AHORA (campo: venta)
@@ -162,6 +186,7 @@ COTIZACIONES AHORA (campo: venta)
 
 SERIE DIARIA (fecha | dólar | carry acumulado | devaluación acumulada)
 25/09/2026 | 1.545,00 | +1,060% | +0,980%
+26/09/2026 | 1.545,00 | +1,109% | +0,980%
 
 ÚLTIMOS MOVIMIENTOS DETECTADOS
 25/09/2026 18:42:12 | Cripto | $1.612,51 | -1,61
@@ -249,6 +274,6 @@ y salida ni mi situación impositiva.
   contempla el costo de entrada y salida (spread, comisiones) ni tu situación
   impositiva. No es asesoramiento financiero.</p>
 
-  <footer>Actualizado: 25/09/2026 18:42:13 · Generado por DolarMonitor.java (campo: venta)</footer>
+  <footer>Actualizado: 26/09/2026 00:39:34 · Generado por DolarMonitor.java (campo: venta)</footer>
 </body>
 </html>
