@@ -88,6 +88,7 @@ public class DolarMonitor {
     private static final Path ARCHIVO_ESTADO = Path.of("ultimo_valor.json");
     private static final Path ARCHIVO_HISTORIAL = Path.of("historial.json");
     private static final Path ARCHIVO_SERIE = Path.of("serie.json");
+    private static final Path ARCHIVO_INFLACION = Path.of("inflacion.json");
     private static final Path ARCHIVO_PAGINA = Path.of("docs/index.html");
 
     private static final int MAX_HISTORIAL = 50;
@@ -107,6 +108,8 @@ public class DolarMonitor {
     private final LocalDate fechaReferencia;
     private final double valorReferencia;
     private final String casaReferencia;
+    /** IPC mensual que se usa para los meses que el INDEC todavia no publico. */
+    private final double ipcEstimado;
 
     private final HttpClient http = HttpClient.newHttpClient();
 
@@ -119,14 +122,30 @@ public class DolarMonitor {
 
     private record Entrada(String fecha, String casa, String nombre, double valor, double variacion) {}
 
-    /** Un punto diario de la carrera. carry y deval son fracciones (0,0106 = 1,06%). */
-    private record Punto(String fecha, double valor, double carry, double deval) {}
+    /**
+     * Un punto diario de la carrera. carry, deval e infl son fracciones
+     * (0,0106 = 1,06%). infl puede ser null en los puntos viejos, grabados
+     * antes de que existiera el seguimiento de inflacion.
+     */
+    private record Punto(String fecha, double valor, double carry, double deval, Double infl) {}
 
     /** Estado calculado de la carrera en este instante. */
     private record Carrera(long dias, double carry, double deval, double equilibrio, double valorActual) {
         double ventaja() { return carry - deval; }
         boolean ganaPesos() { return ventaja() >= 0; }
         double brechaPesos() { return valorActual - equilibrio; }
+    }
+
+    /** Un dato de IPC mensual. mes es "yyyy-MM"; pct es la variacion del mes (1.8 = 1,8%). */
+    private record Ipc(String mes, double pct) {}
+
+    /**
+     * La otra carrera: contra los precios. Ambos rendimientos son REALES, es
+     * decir ya descontada la inflacion acumulada desde la fecha de referencia.
+     */
+    private record Real(double inflacion, double realPesos, double realDolar,
+                        int mesesPublicados, int mesesEstimados) {
+        boolean hayEstimacion() { return mesesEstimados > 0; }
     }
 
     public DolarMonitor() {
@@ -145,6 +164,7 @@ public class DolarMonitor {
         this.valorReferencia = Double.parseDouble(env("VALOR_REFERENCIA", "1530"));
         this.casaReferencia = env("CASA_REFERENCIA", "oficial");
         this.fechaReferencia = LocalDate.parse(env("FECHA_REFERENCIA", "03/09/2026"), FORMATO_FECHA);
+        this.ipcEstimado = Double.parseDouble(env("IPC_ESTIMADO", "2.0")) / 100.0;
     }
 
     public static void main(String[] args) {
@@ -197,9 +217,12 @@ public class DolarMonitor {
                 && signoGuardado != null
                 && !signoGuardado.equals(signoActual);
 
+        // ---- La otra carrera: contra los precios ----
+        Real real = calcularReal(carrera);
+
         // ---- Serie diaria ----
         List<Punto> serie = cargarSerie();
-        boolean diaNuevo = carrera != null && agregarPuntoDelDia(serie, carrera);
+        boolean diaNuevo = carrera != null && agregarPuntoDelDia(serie, carrera, real);
 
         if (cambios.isEmpty() && !hayNuevas && !huboCruce && !diaNuevo) {
             System.out.printf("[%s] %d cotizaciones sin novedades, no se toca nada.%n",
@@ -238,7 +261,7 @@ public class DolarMonitor {
 
         guardarEstado(actuales, nuevasReferencias, signoActual);
         if (diaNuevo) guardarSerie(serie);
-        regenerarPagina(actuales, carrera, serie);
+        regenerarPagina(actuales, carrera, real, serie);
     }
 
     // ---------- Consulta a la API ----------
@@ -301,6 +324,72 @@ public class DolarMonitor {
         double deval = ref.valor() / valorReferencia - 1;
         double equilibrio = valorReferencia * Math.pow(1 + tasaDiaria(), dias);
         return new Carrera(dias, carry, deval, equilibrio, ref.valor());
+    }
+
+    // ---------- La carrera contra la inflacion ----------
+
+    /**
+     * Lee inflacion.json: una lista de {"mes":"yyyy-MM","ipc":1.8} con el IPC
+     * mensual publicado por el INDEC. El archivo lo mantiene el usuario a mano,
+     * agregando cada mes cuando sale el dato.
+     */
+    private List<Ipc> cargarInflacion() {
+        List<Ipc> lista = new ArrayList<>();
+        try {
+            if (!Files.exists(ARCHIVO_INFLACION)) return lista;
+            String contenido = Files.readString(ARCHIVO_INFLACION, StandardCharsets.UTF_8);
+            Matcher m = Pattern.compile("\\{[^{}]*\\}").matcher(contenido);
+            while (m.find()) {
+                String obj = m.group();
+                String mes = extraerTexto(obj, "mes");
+                Double pct = extraerNumero(obj, "ipc");
+                if (mes != null && pct != null) lista.add(new Ipc(mes, pct / 100.0));
+            }
+        } catch (IOException ignored) {
+        }
+        return lista;
+    }
+
+    /**
+     * Inflacion acumulada entre dos fechas, prorrateando por dias los meses
+     * parciales (la referencia casi nunca cae un dia 1). Los meses sin dato
+     * publicado usan IPC_ESTIMADO, y se cuentan aparte para poder avisarlo.
+     */
+    private Real calcularReal(Carrera carrera) {
+        if (carrera == null) return null;
+
+        Map<String, Double> publicados = new LinkedHashMap<>();
+        for (Ipc i : cargarInflacion()) publicados.put(i.mes(), i.pct());
+
+        LocalDate hoy = LocalDate.now(ZONA_HORARIA);
+        double factor = 1.0;
+        int conDato = 0, estimados = 0;
+
+        LocalDate cursor = fechaReferencia.withDayOfMonth(1);
+        while (!cursor.isAfter(hoy)) {
+            String clave = String.format(Locale.ROOT, "%04d-%02d",
+                    cursor.getYear(), cursor.getMonthValue());
+
+            // Dias de ESTE mes que caen dentro del periodo medido.
+            LocalDate inicioMes = cursor;
+            LocalDate finMes = cursor.withDayOfMonth(cursor.lengthOfMonth());
+            LocalDate desde = fechaReferencia.isAfter(inicioMes) ? fechaReferencia : inicioMes;
+            LocalDate hasta = hoy.isBefore(finMes) ? hoy : cursor.plusMonths(1);
+
+            long diasCubiertos = ChronoUnit.DAYS.between(desde, hasta);
+            if (diasCubiertos > 0) {
+                boolean tieneDato = publicados.containsKey(clave);
+                double ipc = tieneDato ? publicados.get(clave) : ipcEstimado;
+                if (tieneDato) conDato++; else estimados++;
+                factor *= Math.pow(1 + ipc, (double) diasCubiertos / cursor.lengthOfMonth());
+            }
+            cursor = cursor.plusMonths(1);
+        }
+
+        double inflacion = factor - 1;
+        double realPesos = (1 + carrera.carry()) / (1 + inflacion) - 1;
+        double realDolar = (1 + carrera.deval()) / (1 + inflacion) - 1;
+        return new Real(inflacion, realPesos, realDolar, conDato, estimados);
     }
 
     /**
@@ -402,17 +491,24 @@ public class DolarMonitor {
 
     // ---------- Serie diaria ----------
 
+    /**
+     * Parsea objeto por objeto en vez de con una regex rigida, asi los puntos
+     * viejos (sin campo "infl") siguen leyendose cuando se agrega un campo.
+     */
     private List<Punto> cargarSerie() {
         List<Punto> lista = new ArrayList<>();
         try {
             if (!Files.exists(ARCHIVO_SERIE)) return lista;
             String contenido = Files.readString(ARCHIVO_SERIE, StandardCharsets.UTF_8);
-            Matcher m = Pattern.compile(
-                    "\\{\"fecha\":\"([^\"]*)\",\"valor\":([0-9.]+),"
-                            + "\"carry\":(-?[0-9.]+),\"deval\":(-?[0-9.]+)\\}").matcher(contenido);
+            Matcher m = Pattern.compile("\\{[^{}]*\\}").matcher(contenido);
             while (m.find()) {
-                lista.add(new Punto(m.group(1), Double.parseDouble(m.group(2)),
-                        Double.parseDouble(m.group(3)), Double.parseDouble(m.group(4))));
+                String obj = m.group();
+                String fecha = extraerTexto(obj, "fecha");
+                Double valor = extraerNumero(obj, "valor");
+                Double carry = extraerNumero(obj, "carry");
+                Double deval = extraerNumero(obj, "deval");
+                if (fecha == null || valor == null || carry == null || deval == null) continue;
+                lista.add(new Punto(fecha, valor, carry, deval, extraerNumero(obj, "infl")));
             }
         } catch (IOException ignored) {
         }
@@ -420,12 +516,13 @@ public class DolarMonitor {
     }
 
     /** Agrega el punto de hoy si todavia no esta. Devuelve true si lo agrego. */
-    private boolean agregarPuntoDelDia(List<Punto> serie, Carrera carrera) {
+    private boolean agregarPuntoDelDia(List<Punto> serie, Carrera carrera, Real real) {
         String hoy = LocalDate.now(ZONA_HORARIA).format(FORMATO_FECHA);
         for (Punto p : serie) {
             if (p.fecha().equals(hoy)) return false;
         }
-        serie.add(new Punto(hoy, carrera.valorActual(), carrera.carry(), carrera.deval()));
+        serie.add(new Punto(hoy, carrera.valorActual(), carrera.carry(), carrera.deval(),
+                real == null ? null : real.inflacion()));
         return true;
     }
 
@@ -434,9 +531,10 @@ public class DolarMonitor {
         StringBuilder sb = new StringBuilder("[\n");
         for (int i = 0; i < recortado.size(); i++) {
             Punto p = recortado.get(i);
+            String infl = p.infl() == null ? "" : String.format(Locale.ROOT, ",\"infl\":%.6f", p.infl());
             sb.append(String.format(Locale.ROOT,
-                    "  {\"fecha\":\"%s\",\"valor\":%.2f,\"carry\":%.6f,\"deval\":%.6f}%s%n",
-                    p.fecha(), p.valor(), p.carry(), p.deval(),
+                    "  {\"fecha\":\"%s\",\"valor\":%.2f,\"carry\":%.6f,\"deval\":%.6f%s}%s%n",
+                    p.fecha(), p.valor(), p.carry(), p.deval(), infl,
                     i < recortado.size() - 1 ? "," : ""));
         }
         sb.append("]");
@@ -496,21 +594,21 @@ public class DolarMonitor {
 
     // ---------- Pagina ----------
 
-    private void regenerarPagina(List<Cotizacion> actuales, Carrera carrera, List<Punto> serie) {
+    private void regenerarPagina(List<Cotizacion> actuales, Carrera carrera, Real real, List<Punto> serie) {
         String html = String.format(LOCALE_AR, """
                 <!DOCTYPE html>
                 <html lang="es">
                 <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Dólar: carry vs devaluación</title>
+                <title>Dólar: renta vs devaluación</title>
                 <style>
                   :root {
                     color-scheme: light;
                     --surface: #fcfcfb; --plane: #f9f9f7;
                     --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
                     --grid: #e1e0d9; --axis: #c3c2b7; --line: rgba(11,11,11,0.10);
-                    --s1: #2a78d6; --s2: #eb6834;
+                    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
                     --good: #0ca30c; --crit: #d03b3b;
                   }
                   @media (prefers-color-scheme: dark) {
@@ -519,7 +617,7 @@ public class DolarMonitor {
                       --surface: #1a1a19; --plane: #0d0d0d;
                       --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
                       --grid: #2c2c2a; --axis: #383835; --line: rgba(255,255,255,0.10);
-                      --s1: #3987e5; --s2: #d95926;
+                      --s1: #3987e5; --s2: #d95926; --s3: #199e70;
                       --good: #0ca30c; --crit: #d03b3b;
                     }
                   }
@@ -578,11 +676,12 @@ public class DolarMonitor {
                 </head>
                 <body>
                   <p class="kicker">Monitor automático</p>
-                  <h1>Dólar: carry vs devaluación</h1>
+                  <h1>Dólar: renta vs devaluación</h1>
                   <p class="lede">Compara tu posición en pesos (FCI money market, %s%% TNA) contra
                   quedarte en dólares, desde el %s. Avisa por WhatsApp cuando alguna cotización
                   se mueve o cuando la carrera se da vuelta.</p>
 
+                %s
                 %s
                 %s
                   <div class="card">
@@ -609,9 +708,9 @@ public class DolarMonitor {
                 </html>
                 """,
                 numeroAR(tnaPesos * 100), fechaReferencia.format(FORMATO_FECHA),
-                bloqueCarrera(carrera), bloqueGrafico(serie),
+                bloqueCarrera(carrera), bloqueReal(real), bloqueGrafico(serie),
                 bloqueCotizaciones(actuales), bloqueHistorial(),
-                bloqueCopiar(actuales, carrera, serie), ahora(), campo);
+                bloqueCopiar(actuales, carrera, real, serie), ahora(), campo);
 
         try {
             Files.createDirectories(ARCHIVO_PAGINA.getParent());
@@ -637,7 +736,7 @@ public class DolarMonitor {
                     dolarizado el %s habría rendido más. Hoy el %s está en
                     <strong>$%,.2f</strong> (%s$%,.2f).</p>
                     <div class="metricas">
-                      <div class="metrica"><span class="lbl">Carry del FCI</span>
+                      <div class="metrica"><span class="lbl">Renta del FCI</span>
                         <span class="val">%+.2f%%</span></div>
                       <div class="metrica"><span class="lbl">Devaluación</span>
                         <span class="val">%+.2f%%</span></div>
@@ -657,8 +756,53 @@ public class DolarMonitor {
     }
 
     /**
-     * Grafico de dos lineas: carry acumulado vs devaluacion acumulada, ambos en
-     * puntos porcentuales sobre el mismo eje (misma unidad, un solo eje).
+     * La otra carrera. Un rendimiento nominal positivo puede ser una perdida
+     * real: esta tarjeta es la que lo muestra.
+     */
+    private String bloqueReal(Real r) {
+        if (r == null) {
+            return "";
+        }
+        boolean gana = r.realPesos() >= 0;
+        String nota = r.hayEstimacion()
+                ? String.format(LOCALE_AR,
+                    "<p class=\"hero-sub\" style=\"margin-top:14px\">Calculado con %d mes(es) "
+                    + "de IPC publicado y %d estimado(s) al %s%% mensual. Cargá el dato real en "
+                    + "<code>inflacion.json</code> cuando salga y el número se corrige solo.</p>",
+                    r.mesesPublicados(), r.mesesEstimados(), numeroAR(ipcEstimado * 100))
+                : String.format(LOCALE_AR,
+                    "<p class=\"hero-sub\" style=\"margin-top:14px\">Calculado con %d mes(es) "
+                    + "de IPC publicado.</p>", r.mesesPublicados());
+
+        return String.format(LOCALE_AR, """
+                  <div class="card">
+                    <h2>La otra carrera: contra los precios</h2>
+                    <span class="pill %s">%s</span>
+                    <p class="hero">%+.2f%%</p>
+                    <p class="hero-sub">Rendimiento <strong>real</strong> de tu posición en pesos:
+                    lo que te rindió el FCI una vez descontada la inflación acumulada desde
+                    el %s.</p>
+                    <div class="metricas">
+                      <div class="metrica"><span class="lbl">Inflación acumulada</span>
+                        <span class="val">%+.2f%%</span></div>
+                      <div class="metrica"><span class="lbl">Real en pesos</span>
+                        <span class="val">%+.2f%%</span></div>
+                      <div class="metrica"><span class="lbl">Real dolarizado</span>
+                        <span class="val">%+.2f%%</span></div>
+                    </div>
+                    %s
+                  </div>
+                """,
+                gana ? "pesos" : "dolar",
+                gana ? "Le ganás a la inflación" : "Perdés contra la inflación",
+                r.realPesos() * 100, fechaReferencia.format(FORMATO_FECHA),
+                r.inflacion() * 100, r.realPesos() * 100, r.realDolar() * 100,
+                nota);
+    }
+
+    /**
+     * Grafico de tres lineas: carry acumulado, devaluacion acumulada e inflacion
+     * acumulada, las tres en puntos porcentuales sobre el mismo eje.
      */
     private String bloqueGrafico(List<Punto> serie) {
         if (serie.size() < 2) {
@@ -667,11 +811,17 @@ public class DolarMonitor {
                     + "</div>\n";
         }
 
-        final int W = 640, H = 200, PL = 6, PR = 76, PT = 14, PB = 26;
+        final int W = 640, H = 210, PL = 6, PR = 76, PT = 14, PB = 26;
+        boolean hayInfl = serie.stream().anyMatch(p -> p.infl() != null);
+
         double max = 0, min = 0;
         for (Punto p : serie) {
             max = Math.max(max, Math.max(p.carry(), p.deval()));
             min = Math.min(min, Math.min(p.carry(), p.deval()));
+            if (p.infl() != null) {
+                max = Math.max(max, p.infl());
+                min = Math.min(min, p.infl());
+            }
         }
         double span = Math.max(max - min, 0.001);
         max += span * 0.12;
@@ -683,6 +833,7 @@ public class DolarMonitor {
 
         StringBuilder carryPts = new StringBuilder();
         StringBuilder devalPts = new StringBuilder();
+        StringBuilder inflPts = new StringBuilder();
         StringBuilder puntos = new StringBuilder();
 
         for (int i = 0; i < n; i++) {
@@ -692,15 +843,21 @@ public class DolarMonitor {
             double yd = PT + altoUtil * (max - p.deval()) / span;
             carryPts.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, yc));
             devalPts.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, yd));
+            if (p.infl() != null) {
+                double yi = PT + altoUtil * (max - p.infl()) / span;
+                inflPts.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, yi));
+            }
 
             // Zona de hover por punto: circulo transparente con <title> nativo.
             // OJO: las coordenadas van con punto decimal (coord), el texto visible
             // con formato argentino. Mezclar los dos rompe el SVG.
+            String detalleInfl = p.infl() == null ? ""
+                    : String.format(LOCALE_AR, " · Inflación %+.2f%%", p.infl() * 100);
             puntos.append(String.format(LOCALE_AR,
                     "      <circle cx=\"%s\" cy=\"%s\" r=\"9\" fill=\"transparent\">"
-                            + "<title>%s\nFCI %+.2f%% · Dólar %+.2f%% · $%,.2f</title></circle>%n",
+                            + "<title>%s\nFCI %+.2f%% · Dólar %+.2f%%%s · $%,.2f</title></circle>%n",
                     coord(x), coord((yc + yd) / 2), escaparHtml(p.fecha()),
-                    p.carry() * 100, p.deval() * 100, p.valor()));
+                    p.carry() * 100, p.deval() * 100, detalleInfl, p.valor()));
         }
 
         double yCero = PT + altoUtil * (max - 0) / span;
@@ -713,35 +870,54 @@ public class DolarMonitor {
             if (ycUlt <= ydUlt) { ycUlt -= 7; ydUlt += 7; } else { ycUlt += 7; ydUlt -= 7; }
         }
 
+        String lineaInfl = "", etiquetaInfl = "", leyendaInfl = "";
+        if (hayInfl && ult.infl() != null) {
+            double yiUlt = PT + altoUtil * (max - ult.infl()) / span;
+            if (Math.abs(yiUlt - ycUlt) < 14) yiUlt += (yiUlt >= ycUlt ? 8 : -8);
+            if (Math.abs(yiUlt - ydUlt) < 14) yiUlt += (yiUlt >= ydUlt ? 8 : -8);
+            lineaInfl = String.format(Locale.ROOT,
+                    "<polyline points=\"%s\" fill=\"none\" stroke=\"var(--s3)\" stroke-width=\"2\"%n"
+                            + "                                stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+                    inflPts.toString().trim());
+            etiquetaInfl = String.format(LOCALE_AR,
+                    "<text x=\"%s\" y=\"%s\" fill=\"var(--s3)\" font-size=\"12\" font-weight=\"600\"%n"
+                            + "                            dominant-baseline=\"middle\">%+.2f%%</text>",
+                    coord(xUlt + 8), coord(yiUlt), ult.infl() * 100);
+            leyendaInfl = "<span><i class=\"sw\" style=\"background:var(--s3)\"></i>Inflación</span>";
+        }
+
         return String.format(LOCALE_AR, """
                   <div class="card">
                     <h2>Evolución desde el %s</h2>
                     <p class="leyenda">
                       <span><i class="sw" style="background:var(--s1)"></i>FCI en pesos</span>
                       <span><i class="sw" style="background:var(--s2)"></i>Dólar %s</span>
+                      %s
                     </p>
                     <svg viewBox="0 0 %d %d" role="img"
-                         aria-label="Rendimiento acumulado del FCI en pesos comparado con la devaluación, desde el %s">
+                         aria-label="Rendimiento acumulado del FCI en pesos comparado con la devaluación y la inflación, desde el %s">
                       <line x1="%d" y1="%s" x2="%s" y2="%s" stroke="var(--axis)" stroke-width="1"/>
                       <polyline points="%s" fill="none" stroke="var(--s1)" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round"/>
                       <polyline points="%s" fill="none" stroke="var(--s2)" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round"/>
+                      %s
                       <text x="%s" y="%s" fill="var(--s1)" font-size="12" font-weight="600"
                             dominant-baseline="middle">%+.2f%%</text>
                       <text x="%s" y="%s" fill="var(--s2)" font-size="12" font-weight="600"
                             dominant-baseline="middle">%+.2f%%</text>
+                      %s
                       <text x="%d" y="%d" fill="var(--muted)" font-size="11">%s</text>
                       <text x="%s" y="%d" fill="var(--muted)" font-size="11" text-anchor="end">%s</text>
                 %s    </svg>
                   </div>
                 """,
-                fechaReferencia.format(FORMATO_FECHA), escaparHtml(casaReferencia),
+                fechaReferencia.format(FORMATO_FECHA), escaparHtml(casaReferencia), leyendaInfl,
                 W, H, fechaReferencia.format(FORMATO_FECHA),
                 PL, coord(yCero), coord(W - PR), coord(yCero),
-                carryPts.toString().trim(), devalPts.toString().trim(),
+                carryPts.toString().trim(), devalPts.toString().trim(), lineaInfl,
                 coord(xUlt + 8), coord(ycUlt), ult.carry() * 100,
-                coord(xUlt + 8), coord(ydUlt), ult.deval() * 100,
+                coord(xUlt + 8), coord(ydUlt), ult.deval() * 100, etiquetaInfl,
                 PL, H - 8, escaparHtml(serie.get(0).fecha()),
                 coord(W - PR), H - 8, escaparHtml(ult.fecha()),
                 puntos);
@@ -752,7 +928,7 @@ public class DolarMonitor {
      * para pegar en claude.ai y preguntar. El texto vive en un <pre> oculto,
      * asi no hay que escaparlo como literal de JavaScript.
      */
-    private String bloqueCopiar(List<Cotizacion> actuales, Carrera carrera, List<Punto> serie) {
+    private String bloqueCopiar(List<Cotizacion> actuales, Carrera carrera, Real real, List<Punto> serie) {
         return """
                   <div class="card">
                     <h2>Analizar con Claude</h2>
@@ -818,11 +994,11 @@ public class DolarMonitor {
                       });
                     })();
                   </script>
-                """.formatted(escaparHtml(contextoTexto(actuales, carrera, serie)));
+                """.formatted(escaparHtml(contextoTexto(actuales, carrera, real, serie)));
     }
 
     /** El resumen en texto plano que se copia al portapapeles. */
-    private String contextoTexto(List<Cotizacion> actuales, Carrera carrera, List<Punto> serie) {
+    private String contextoTexto(List<Cotizacion> actuales, Carrera carrera, Real real, List<Punto> serie) {
         StringBuilder sb = new StringBuilder();
         sb.append("CONTEXTO DEL MONITOR DE DÓLAR — snapshot del ").append(ahora())
           .append(" (hora de Buenos Aires)\n\n");
@@ -841,8 +1017,8 @@ public class DolarMonitor {
 
         if (carrera != null) {
             sb.append(String.format(LOCALE_AR,
-                    "%nLA CARRERA (carry en pesos vs devaluación), %d días corridos%n"
-                            + "- Carry acumulado del FCI: %+.3f%%%n"
+                    "%nLA CARRERA (renta en pesos vs devaluación), %d días corridos%n"
+                            + "- Renta acumulada del FCI: %+.3f%%%n"
                             + "- Devaluación acumulada del %s: %+.3f%%%n"
                             + "- Ventaja de haberme quedado en pesos: %+.3f puntos porcentuales%n"
                             + "- Dólar de equilibrio hoy: $%,.2f (por encima de ese valor, "
@@ -857,16 +1033,32 @@ public class DolarMonitor {
                     carrera.ganaPesos() ? "el FCI en pesos" : "el dólar"));
         }
 
+        if (real != null) {
+            sb.append(String.format(LOCALE_AR,
+                    "%nLA OTRA CARRERA: CONTRA LOS PRECIOS%n"
+                            + "- Inflación acumulada desde mi entrada: %+.3f%%%n"
+                            + "- Rendimiento REAL en pesos: %+.3f%%%n"
+                            + "- Rendimiento REAL si me hubiera dolarizado: %+.3f%%%n"
+                            + "- Base del cálculo: %d mes(es) de IPC publicado%s%n",
+                    real.inflacion() * 100, real.realPesos() * 100, real.realDolar() * 100,
+                    real.mesesPublicados(),
+                    real.hayEstimacion()
+                            ? String.format(LOCALE_AR, " y %d estimado(s) al %s%% mensual",
+                                real.mesesEstimados(), numeroAR(ipcEstimado * 100))
+                            : ""));
+        }
+
         sb.append(String.format("%nCOTIZACIONES AHORA (campo: %s)%n", campo));
         for (Cotizacion c : actuales) {
             sb.append(String.format(LOCALE_AR, "- %s: $%,.2f%n", c.nombre(), c.valor()));
         }
 
         if (!serie.isEmpty()) {
-            sb.append("\nSERIE DIARIA (fecha | dólar | carry acumulado | devaluación acumulada)\n");
+            sb.append("\nSERIE DIARIA (fecha | dólar | renta acum. | devaluación acum. | inflación acum.)\n");
             for (Punto p : serie) {
-                sb.append(String.format(LOCALE_AR, "%s | %,.2f | %+.3f%% | %+.3f%%%n",
-                        p.fecha(), p.valor(), p.carry() * 100, p.deval() * 100));
+                sb.append(String.format(LOCALE_AR, "%s | %,.2f | %+.3f%% | %+.3f%% | %s%n",
+                        p.fecha(), p.valor(), p.carry() * 100, p.deval() * 100,
+                        p.infl() == null ? "s/d" : String.format(LOCALE_AR, "%+.3f%%", p.infl() * 100)));
             }
         }
 

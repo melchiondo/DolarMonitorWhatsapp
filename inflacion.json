@@ -1,0 +1,10 @@
+[
+  {"_nota": "IPC mensual del INDEC, en porcentaje. Cargá el número cuando se publica (ej: 1.8 para 1,8%). Los meses que sigan en null usan IPC_ESTIMADO del workflow."},
+  {"mes": "2026-09", "ipc": null},
+  {"mes": "2026-10", "ipc": null},
+  {"mes": "2026-11", "ipc": null},
+  {"mes": "2026-12", "ipc": null},
+  {"mes": "2027-01", "ipc": null},
+  {"mes": "2027-02", "ipc": null},
+  {"mes": "2027-03", "ipc": null}
+]

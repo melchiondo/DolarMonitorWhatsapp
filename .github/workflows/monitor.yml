@@ -40,6 +40,7 @@ jobs:
       FECHA_REFERENCIA: "03/09/2026"
       VALOR_REFERENCIA: "1530"
       CASA_REFERENCIA: "oficial"
+      IPC_ESTIMADO: "2.0"
 
       ITERACIONES: "11"
       INTERVALO_SEG: "300"
@@ -67,7 +68,7 @@ jobs:
 
             java -cp build DolarMonitor || echo "El chequeo $i falló, sigo."
 
-            git add -- ultimo_valor.json historial.json serie.json docs/index.html 2>/dev/null || true
+            git add -- ultimo_valor.json historial.json serie.json inflacion.json docs/index.html 2>/dev/null || true
 
             if ! git diff --staged --quiet; then
               git commit -q -m "Actualiza cotizaciones y tablero [skip ci]"

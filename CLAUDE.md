@@ -20,6 +20,8 @@ cambio que introduzca un servicio pago hay que consultarlo antes.
 - `ultimo_valor.json` — valor de **referencia** de cada cotización.
 - `historial.json` — últimos cambios detectados.
 - `serie.json` — un punto por día, alimenta el gráfico.
+- `inflacion.json` — IPC mensual del INDEC, **cargado a mano**. Los meses en
+  `null` usan `IPC_ESTIMADO`.
 - `docs/index.html` — la página, **generada por el Java en cada corrida**.
   No editarla a mano: se pisa sola.
 
@@ -98,6 +100,13 @@ $12. Solo cambia la flecha (▲ / ▼). No hace falta "agregar" alertas de bajad
 La primera vez que se ve una cotización se guarda sin notificar, para que el
 primer arranque no dispare una ráfaga de siete alertas.
 
+### 9. La inflación se prorratea por días
+
+La fecha de referencia casi nunca cae un día 1. En `calcularReal()` cada mes
+aporta `(1 + ipc) ^ (días cubiertos / días del mes)`, igual que el carry, que
+también se cuenta por días. Contar meses enteros inflaría el primer y el
+último mes y desalinearía las dos carreras.
+
 ## Configuración
 
 Todo vive en el `env:` del workflow, **no hardcodeado en el Java** (el Java solo
@@ -113,6 +122,7 @@ tiene defaults que coinciden con los valores actuales):
 | `FECHA_REFERENCIA` | Fecha de entrada a la posición (dd/MM/yyyy) |
 | `VALOR_REFERENCIA` | Cotización de ese día |
 | `CASA_REFERENCIA` | Contra qué cotización se mide la carrera |
+| `IPC_ESTIMADO` | IPC mensual (%) para los meses sin dato en `inflacion.json` |
 
 Si el dueño pasa a dolarizar vía MEP en vez de oficial, hay que cambiar
 `CASA_REFERENCIA` a `bolsa` **y** ajustar `VALOR_REFERENCIA` al MEP de la fecha
@@ -143,6 +153,13 @@ varias a la vez, y acumulación de variaciones chicas bajo el umbral.
 Si se toca la página o el gráfico, **abrirla en un navegador y mirarla**. El bug
 de las comas decimales en el SVG compilaba perfecto y pasaba todos los chequeos
 de sintaxis: solo se vio al renderizar.
+
+## Incidentes ya investigados
+
+- **05/10/2026, corrida 37372251632 en rojo**: fue infraestructura de GitHub,
+  no el código. El job nunca consiguió runner ("The job was not acquired by
+  Runner of type hosted even after multiple attempts"), no ejecutó ningún paso
+  y se canceló a los 15 minutos. La corrida siguiente salió verde.
 
 ## Nota sobre el trabajo en paralelo
 
