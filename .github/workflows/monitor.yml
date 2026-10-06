@@ -5,16 +5,20 @@ on:
     # Lunes a viernes, 10:00 a 20:00 AR: cobertura continua.
     # Cubre el MULC (oficial, mayorista), el MEP/CCL, y la tarde del blue,
     # que se mueve después del cierre del mercado oficial.
-    - cron: "0,30 13-23 * * 1-5"
+    # Minutos 7 y 37, no 0 y 30: en la hora en punto GitHub está saturado y
+    # saltea más disparos. El cron es la red de seguridad; la cobertura
+    # continua la da el último paso, que encadena la corrida siguiente.
+    - cron: "7,37 13-23 * * 1-5"
     # Siempre, una ventana de ~50 min cada 3 horas: noches y fines de semana.
     # El cripto cotiza 24/7 y el blue también se mueve los sábados.
     # En días hábiles estos disparos quedan encolados detrás de la cobertura
     # continua y no molestan (el concurrency deja un solo pendiente).
-    - cron: "0 */3 * * *"
+    - cron: "17 */3 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
+  actions: write   # para que cada corrida dispare la siguiente
 
 concurrency:
   group: monitor-dolar
@@ -87,3 +91,21 @@ jobs:
               sleep "$INTERVALO_SEG"
             fi
           done
+
+      # GitHub saltea crons durante horas (medido: 4 a 6 corridas por día de
+      # unos 30 disparos). En horario hábil cada corrida dispara la siguiente
+      # al terminar; workflow_dispatch es el único evento que el GITHUB_TOKEN
+      # puede disparar. Si la cadena se corta, el cron la retoma.
+      - name: Encadenar la próxima corrida
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dia=$(TZ=America/Argentina/Buenos_Aires date +%u)
+          hora=$(TZ=America/Argentina/Buenos_Aires date +%H)
+          if [ "$dia" -le 5 ] && [ "$hora" -ge 10 ] && [ "$hora" -lt 20 ]; then
+            gh workflow run monitor.yml --repo "$GITHUB_REPOSITORY" --ref main \
+              || echo "No se pudo encadenar; queda el cron."
+          else
+            echo "Fuera de horario hábil: no se encadena, sigue el cron."
+          fi

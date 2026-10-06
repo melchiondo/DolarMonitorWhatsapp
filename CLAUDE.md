@@ -42,6 +42,15 @@ por hora. El `concurrency` evita que dos corridas se pisen al pushear.
 
 **No volver a un cron `*/5` o `*/10` sin loop.** Parece más simple y es peor.
 
+Ni siquiera un disparo por hora está garantizado: entre el 26/09 y el 06/10
+GitHub ejecutó 4 a 6 corridas por día de unos 30 disparos programados, con
+huecos de hasta 9 horas en horario de mercado. Por eso, en días hábiles de
+10 a 20 (hora AR), el último paso del workflow **encadena** la corrida
+siguiente con `gh workflow run` (`workflow_dispatch` es el único evento que
+el `GITHUB_TOKEN` puede disparar; requiere `actions: write`). El cron queda
+como red de seguridad si la cadena se corta, y usa minutos 7/37/17 en vez
+de la hora en punto, que es cuando GitHub más saltea.
+
 ### 2. Todo lo que escribe JSON o SVG usa `Locale.ROOT`
 
 El locale argentino formatea `1234.56` como `1234,56`. Eso rompe dos cosas
