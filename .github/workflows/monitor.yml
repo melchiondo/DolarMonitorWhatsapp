@@ -38,6 +38,7 @@ jobs:
       UMBRAL_PORCENTAJE: "0"
       CAMPO: "venta"
       CASAS: ""
+      CASAS_DESTACADAS: "oficial,blue"
 
       # --- Tablero: tu posición en pesos vs dolarizarte ---
       TNA_PESOS: "17.5"

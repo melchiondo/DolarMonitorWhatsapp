@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -101,6 +102,8 @@ public class DolarMonitor {
     private final double umbralPorcentaje;
     private final String campo;
     private final List<String> casasFiltro;
+    /** Cotizaciones que van primero y resaltadas en el WhatsApp. */
+    private final List<String> casasDestacadas;
     private final String callmebotPhone;
     private final String callmebotApikey;
 
@@ -159,6 +162,10 @@ public class DolarMonitor {
         this.casasFiltro = casas.isEmpty()
                 ? List.of()
                 : List.of(casas.toLowerCase(Locale.ROOT).split("\\s*,\\s*"));
+        String destacadas = env("CASAS_DESTACADAS", "oficial,blue").trim();
+        this.casasDestacadas = destacadas.isEmpty()
+                ? List.of()
+                : List.of(destacadas.toLowerCase(Locale.ROOT).split("\\s*,\\s*"));
 
         this.tnaPesos = Double.parseDouble(env("TNA_PESOS", "17.5")) / 100.0;
         this.valorReferencia = Double.parseDouble(env("VALOR_REFERENCIA", "1530"));
@@ -548,13 +555,21 @@ public class DolarMonitor {
         sb.append(cambios.size() == 1
                 ? "Se movio una cotizacion (" + campo + ")"
                 : "Se movieron " + cambios.size() + " cotizaciones (" + campo + ")");
-        for (Cambio c : cambios) {
+        // Las destacadas (oficial y blue por defecto) van primero, con sirena y
+        // en negrita de WhatsApp (*texto*), para que salten a la vista.
+        List<Cambio> ordenados = new ArrayList<>(cambios);
+        ordenados.sort(Comparator.comparing(c -> !casasDestacadas.contains(c.casa())));
+        for (Cambio c : ordenados) {
+            boolean destacada = casasDestacadas.contains(c.casa());
+            String b = destacada ? "*" : "";
             sb.append(String.format(LOCALE_AR,
-                    "%n%n%s %s%n$%,.2f -> $%,.2f%n%s%,.2f (%s%.2f%%)",
-                    c.diferencia() > 0 ? "\u25B2" : "\u25BC", c.nombre(),
-                    c.anterior(), c.actual(),
-                    c.diferencia() >= 0 ? "+" : "", c.diferencia(),
-                    c.porcentaje() >= 0 ? "+" : "", c.porcentaje()));
+                    "%n%n%s%s %s%s%s%n%s$%,.2f -> $%,.2f%s%n%s%s%,.2f (%s%.2f%%)%s",
+                    destacada ? "\uD83D\uDEA8 " : "",
+                    c.diferencia() > 0 ? "\u25B2" : "\u25BC",
+                    b, destacada ? c.nombre().toUpperCase(LOCALE_AR) : c.nombre(), b,
+                    b, c.anterior(), c.actual(), b,
+                    b, c.diferencia() >= 0 ? "+" : "", c.diferencia(),
+                    c.porcentaje() >= 0 ? "+" : "", c.porcentaje(), b));
         }
         return sb.toString();
     }

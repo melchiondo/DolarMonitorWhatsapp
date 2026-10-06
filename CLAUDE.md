@@ -127,6 +127,7 @@ tiene defaults que coinciden con los valores actuales):
 | `UMBRAL_PORCENTAJE` | Variación mínima en % (0 = desactivado) |
 | `CAMPO` | `venta` o `compra` |
 | `CASAS` | Cotizaciones a seguir (vacío = todas) |
+| `CASAS_DESTACADAS` | Van primero en el WhatsApp, con 🚨 y en negrita |
 | `TNA_PESOS` | TNA del FCI. **Actualizar cuando cambie la tasa** |
 | `FECHA_REFERENCIA` | Fecha de entrada a la posición (dd/MM/yyyy) |
 | `VALOR_REFERENCIA` | Cotización de ese día |
