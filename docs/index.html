@@ -86,36 +86,36 @@
   <div class="card">
     <h2>La carrera</h2>
     <span class="pill pesos">Vienen ganando los pesos</span>
-    <p class="hero">$1.554,39</p>
+    <p class="hero">$1.555,14</p>
     <p class="hero-sub">Dólar de equilibrio: por encima de ese valor, haberte
     dolarizado el 03/09/2026 habría rendido más. Hoy el oficial está en
-    <strong>$1.540,00</strong> ($-14,39).</p>
+    <strong>$1.540,00</strong> ($-15,14).</p>
     <div class="metricas">
       <div class="metrica"><span class="lbl">Renta del FCI</span>
-        <span class="val">+1,59%</span></div>
+        <span class="val">+1,64%</span></div>
       <div class="metrica"><span class="lbl">Devaluación</span>
         <span class="val">+0,65%</span></div>
       <div class="metrica"><span class="lbl">Ventaja</span>
-        <span class="val">+0,94 pts</span></div>
+        <span class="val">+0,99 pts</span></div>
       <div class="metrica"><span class="lbl">Días</span>
-        <span class="val">33</span></div>
+        <span class="val">34</span></div>
     </div>
   </div>
 
   <div class="card">
     <h2>La otra carrera: contra los precios</h2>
     <span class="pill dolar">Perdés contra la inflación</span>
-    <p class="hero">-0,58%</p>
+    <p class="hero">-0,60%</p>
     <p class="hero-sub">Rendimiento <strong>real</strong> de tu posición en pesos:
     lo que te rindió el FCI una vez descontada la inflación acumulada desde
     el 03/09/2026.</p>
     <div class="metricas">
       <div class="metrica"><span class="lbl">Inflación acumulada</span>
-        <span class="val">+2,19%</span></div>
+        <span class="val">+2,26%</span></div>
       <div class="metrica"><span class="lbl">Real en pesos</span>
-        <span class="val">-0,58%</span></div>
+        <span class="val">-0,60%</span></div>
       <div class="metrica"><span class="lbl">Real dolarizado</span>
-        <span class="val">-1,50%</span></div>
+        <span class="val">-1,57%</span></div>
     </div>
     <p class="hero-sub" style="margin-top:14px">Calculado con 0 mes(es) de IPC publicado y 2 estimado(s) al 2% mensual. Cargá el dato real en <code>inflacion.json</code> cuando salga y el número se corrige solo.</p>
   </div>
@@ -125,47 +125,51 @@
     <p class="leyenda">
       <span><i class="sw" style="background:var(--s1)"></i>FCI en pesos</span>
       <span><i class="sw" style="background:var(--s2)"></i>Dólar oficial</span>
-      
+      <span><i class="sw" style="background:var(--s3)"></i>Inflación</span>
     </p>
     <svg viewBox="0 0 640 210" role="img"
          aria-label="Rendimiento acumulado del FCI en pesos comparado con la devaluación y la inflación, desde el 03/09/2026">
       <line x1="6" y1="167.5" x2="564.0" y2="167.5" stroke="var(--axis)" stroke-width="1"/>
-      <polyline points="6.0,76.4 56.7,72.2 107.5,68.1 158.2,63.9 208.9,59.7 259.6,55.5 310.4,51.4 361.1,47.2 411.8,43.0 462.5,38.8 513.3,34.6 564.0,30.5" fill="none" stroke="var(--s1)" stroke-width="2"
+      <polyline points="6.0,103.1 52.5,100.2 99.0,97.3 145.5,94.3 192.0,91.4 238.5,88.4 285.0,85.5 331.5,82.5 378.0,79.6 424.5,76.6 471.0,73.6 517.5,70.7 564.0,67.7" fill="none" stroke="var(--s1)" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"/>
-      <polyline points="6.0,83.2 56.7,83.2 107.5,83.2 158.2,83.2 208.9,83.2 259.6,83.2 310.4,111.3 361.1,83.2 411.8,111.3 462.5,111.3 513.3,111.3 564.0,111.3" fill="none" stroke="var(--s2)" stroke-width="2"
+      <polyline points="6.0,108.0 52.5,108.0 99.0,108.0 145.5,108.0 192.0,108.0 238.5,108.0 285.0,127.8 331.5,108.0 378.0,127.8 424.5,127.8 471.0,127.8 517.5,127.8 564.0,127.8" fill="none" stroke="var(--s2)" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"/>
-      
-      <text x="572.0" y="30.5" fill="var(--s1)" font-size="12" font-weight="600"
-            dominant-baseline="middle">+1,59%</text>
-      <text x="572.0" y="111.3" fill="var(--s2)" font-size="12" font-weight="600"
+      <polyline points="564.0,30.5" fill="none" stroke="var(--s3)" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="572.0" y="67.7" fill="var(--s1)" font-size="12" font-weight="600"
+            dominant-baseline="middle">+1,64%</text>
+      <text x="572.0" y="127.8" fill="var(--s2)" font-size="12" font-weight="600"
             dominant-baseline="middle">+0,65%</text>
-      
+      <text x="572.0" y="30.5" fill="var(--s3)" font-size="12" font-weight="600"
+                            dominant-baseline="middle">+2,26%</text>
       <text x="6" y="202" fill="var(--muted)" font-size="11">25/09/2026</text>
-      <text x="564.0" y="202" fill="var(--muted)" font-size="11" text-anchor="end">06/10/2026</text>
-      <circle cx="6.0" cy="79.8" r="9" fill="transparent"><title>25/09/2026
+      <text x="564.0" y="202" fill="var(--muted)" font-size="11" text-anchor="end">07/10/2026</text>
+      <circle cx="6.0" cy="105.6" r="9" fill="transparent"><title>25/09/2026
 FCI +1,06% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="56.7" cy="77.7" r="9" fill="transparent"><title>26/09/2026
+      <circle cx="52.5" cy="104.1" r="9" fill="transparent"><title>26/09/2026
 FCI +1,11% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="107.5" cy="75.7" r="9" fill="transparent"><title>27/09/2026
+      <circle cx="99.0" cy="102.6" r="9" fill="transparent"><title>27/09/2026
 FCI +1,16% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="158.2" cy="73.6" r="9" fill="transparent"><title>28/09/2026
+      <circle cx="145.5" cy="101.1" r="9" fill="transparent"><title>28/09/2026
 FCI +1,21% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="208.9" cy="71.5" r="9" fill="transparent"><title>29/09/2026
+      <circle cx="192.0" cy="99.7" r="9" fill="transparent"><title>29/09/2026
 FCI +1,25% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="259.6" cy="69.4" r="9" fill="transparent"><title>30/09/2026
+      <circle cx="238.5" cy="98.2" r="9" fill="transparent"><title>30/09/2026
 FCI +1,30% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="310.4" cy="81.4" r="9" fill="transparent"><title>01/10/2026
+      <circle cx="285.0" cy="106.6" r="9" fill="transparent"><title>01/10/2026
 FCI +1,35% · Dólar +0,65% · $1.540,00</title></circle>
-      <circle cx="361.1" cy="65.2" r="9" fill="transparent"><title>02/10/2026
+      <circle cx="331.5" cy="95.2" r="9" fill="transparent"><title>02/10/2026
 FCI +1,40% · Dólar +0,98% · $1.545,00</title></circle>
-      <circle cx="411.8" cy="77.2" r="9" fill="transparent"><title>03/10/2026
+      <circle cx="378.0" cy="103.7" r="9" fill="transparent"><title>03/10/2026
 FCI +1,45% · Dólar +0,65% · $1.540,00</title></circle>
-      <circle cx="462.5" cy="75.1" r="9" fill="transparent"><title>04/10/2026
+      <circle cx="424.5" cy="102.2" r="9" fill="transparent"><title>04/10/2026
 FCI +1,50% · Dólar +0,65% · $1.540,00</title></circle>
-      <circle cx="513.3" cy="73.0" r="9" fill="transparent"><title>05/10/2026
+      <circle cx="471.0" cy="100.7" r="9" fill="transparent"><title>05/10/2026
 FCI +1,55% · Dólar +0,65% · $1.540,00</title></circle>
-      <circle cx="564.0" cy="70.9" r="9" fill="transparent"><title>06/10/2026
+      <circle cx="517.5" cy="99.3" r="9" fill="transparent"><title>06/10/2026
 FCI +1,59% · Dólar +0,65% · $1.540,00</title></circle>
+      <circle cx="564.0" cy="97.8" r="9" fill="transparent"><title>07/10/2026
+FCI +1,64% · Dólar +0,65% · Inflación +2,26% · $1.540,00</title></circle>
     </svg>
   </div>
 
@@ -176,7 +180,7 @@ FCI +1,59% · Dólar +0,65% · $1.540,00</title></circle>
     <div class="cotiz"><span class="nom">Bolsa</span><span class="mto">$1.544,40</span></div>
     <div class="cotiz"><span class="nom">Contado con liquidación</span><span class="mto">$1.610,80</span></div>
     <div class="cotiz"><span class="nom">Mayorista</span><span class="mto">$1.520,00</span></div>
-    <div class="cotiz"><span class="nom">Cripto</span><span class="mto">$1.603,24</span></div>
+    <div class="cotiz"><span class="nom">Cripto</span><span class="mto">$1.603,31</span></div>
     <div class="cotiz"><span class="nom">Tarjeta</span><span class="mto">$2.002,00</span></div>
   </div>
 
@@ -246,25 +250,25 @@ FCI +1,59% · Dólar +0,65% · $1.540,00</title></circle>
     pegarlo en una conversación y preguntar lo que quieras.</p>
     <button id="btn-copiar" type="button">Copiar contexto</button>
     <span id="copiado" role="status" aria-live="polite"></span>
-    <pre id="contexto" hidden>CONTEXTO DEL MONITOR DE DÓLAR — snapshot del 06/10/2026 17:06:13 (hora de Buenos Aires)
+    <pre id="contexto" hidden>CONTEXTO DEL MONITOR DE DÓLAR — snapshot del 07/10/2026 03:08:08 (hora de Buenos Aires)
 
 MI POSICIÓN
 - Instrumento: FCI money market en pesos, TNA declarada 17,50%
 - Rendimiento efectivo: 19,12% anual, 1,448% mensual, 0,0479% diario (capitaliza todos los días)
 - Entré el 03/09/2026, con el dólar oficial (venta) a $1.530,00
 
-LA CARRERA (renta en pesos vs devaluación), 33 días corridos
-- Renta acumulada del FCI: +1,594%
+LA CARRERA (renta en pesos vs devaluación), 34 días corridos
+- Renta acumulada del FCI: +1,643%
 - Devaluación acumulada del oficial: +0,654%
-- Ventaja de haberme quedado en pesos: +0,941 puntos porcentuales
-- Dólar de equilibrio hoy: $1.554,39 (por encima de ese valor, dolarizarme el 03/09/2026 habría rendido más)
-- Dólar oficial hoy: $1.540,00 ($-14,39 respecto del equilibrio)
+- Ventaja de haberme quedado en pesos: +0,990 puntos porcentuales
+- Dólar de equilibrio hoy: $1.555,14 (por encima de ese valor, dolarizarme el 03/09/2026 habría rendido más)
+- Dólar oficial hoy: $1.540,00 ($-15,14 respecto del equilibrio)
 - Viene ganando: el FCI en pesos
 
 LA OTRA CARRERA: CONTRA LOS PRECIOS
-- Inflación acumulada desde mi entrada: +2,191%
-- Rendimiento REAL en pesos: -0,584%
-- Rendimiento REAL si me hubiera dolarizado: -1,505%
+- Inflación acumulada desde mi entrada: +2,257%
+- Rendimiento REAL en pesos: -0,600%
+- Rendimiento REAL si me hubiera dolarizado: -1,568%
 - Base del cálculo: 0 mes(es) de IPC publicado y 2 estimado(s) al 2% mensual
 
 COTIZACIONES AHORA (campo: venta)
@@ -273,7 +277,7 @@ COTIZACIONES AHORA (campo: venta)
 - Bolsa: $1.544,40
 - Contado con liquidación: $1.610,80
 - Mayorista: $1.520,00
-- Cripto: $1.603,24
+- Cripto: $1.603,31
 - Tarjeta: $2.002,00
 
 SERIE DIARIA (fecha | dólar | renta acum. | devaluación acum. | inflación acum.)
@@ -289,6 +293,7 @@ SERIE DIARIA (fecha | dólar | renta acum. | devaluación acum. | inflación acu
 04/10/2026 | 1.540,00 | +1,497% | +0,654% | s/d
 05/10/2026 | 1.540,00 | +1,546% | +0,654% | s/d
 06/10/2026 | 1.540,00 | +1,594% | +0,654% | s/d
+07/10/2026 | 1.540,00 | +1,643% | +0,654% | +2,257%
 
 ÚLTIMOS MOVIMIENTOS DETECTADOS
 06/10/2026 17:06:12 | Cripto | $1.603,24 | -4,76
@@ -421,6 +426,6 @@ y salida ni mi situación impositiva.
   contempla el costo de entrada y salida (spread, comisiones) ni tu situación
   impositiva. No es asesoramiento financiero.</p>
 
-  <footer>Actualizado: 06/10/2026 17:06:13 · Generado por DolarMonitor.java (campo: venta)</footer>
+  <footer>Actualizado: 07/10/2026 03:08:08 · Generado por DolarMonitor.java (campo: venta)</footer>
 </body>
 </html>
