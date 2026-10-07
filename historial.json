@@ -1,5 +1,4 @@
 [
-  {"fecha":"01/10/2026 15:36:37","casa":"blue","nombre":"Blue","valor":1555.00,"variacion":-5.00},
   {"fecha":"01/10/2026 15:36:37","casa":"bolsa","nombre":"Bolsa","valor":1550.30,"variacion":1.60},
   {"fecha":"01/10/2026 15:36:37","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1620.30,"variacion":6.10},
   {"fecha":"01/10/2026 15:36:37","casa":"mayorista","nombre":"Mayorista","valor":1523.00,"variacion":6.00},
@@ -48,5 +47,6 @@
   {"fecha":"06/10/2026 17:06:12","casa":"bolsa","nombre":"Bolsa","valor":1544.40,"variacion":4.80},
   {"fecha":"06/10/2026 17:06:12","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1610.80,"variacion":2.70},
   {"fecha":"06/10/2026 17:06:12","casa":"mayorista","nombre":"Mayorista","valor":1520.00,"variacion":-1.00},
-  {"fecha":"06/10/2026 17:06:12","casa":"cripto","nombre":"Cripto","valor":1603.24,"variacion":-4.76}
+  {"fecha":"06/10/2026 17:06:12","casa":"cripto","nombre":"Cripto","valor":1603.24,"variacion":-4.76},
+  {"fecha":"07/10/2026 10:33:32","casa":"cripto","nombre":"Cripto","valor":1607.37,"variacion":4.13}
 ]
