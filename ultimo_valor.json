@@ -1,14 +1,14 @@
 {
-  "actualizado": "21/10/2026 16:04:58",
+  "actualizado": "21/10/2026 17:05:26",
   "campo": "venta",
   "ganando": "pesos",
   "_nota": "valor = ultima referencia avisada de cada cotizacion, no necesariamente el valor vivo",
   "cotizaciones": [
     {"casa":"oficial","nombre":"Oficial","valor":1545.00},
     {"casa":"blue","nombre":"Blue","valor":1565.00},
-    {"casa":"bolsa","nombre":"Bolsa","valor":1547.60},
-    {"casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1633.70},
-    {"casa":"mayorista","nombre":"Mayorista","valor":1527.00},
+    {"casa":"bolsa","nombre":"Bolsa","valor":1553.80},
+    {"casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1638.00},
+    {"casa":"mayorista","nombre":"Mayorista","valor":1526.00},
     {"casa":"cripto","nombre":"Cripto","valor":1632.03},
     {"casa":"tarjeta","nombre":"Tarjeta","valor":2008.50}
   ]
