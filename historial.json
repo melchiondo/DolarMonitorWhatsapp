@@ -1,10 +1,4 @@
 [
-  {"fecha":"28/10/2026 11:07:38","casa":"mayorista","nombre":"Mayorista","valor":1535.00,"variacion":-3.00},
-  {"fecha":"28/10/2026 11:07:38","casa":"cripto","nombre":"Cripto","valor":1654.98,"variacion":6.96},
-  {"fecha":"28/10/2026 12:03:07","casa":"blue","nombre":"Blue","valor":1570.00,"variacion":-5.00},
-  {"fecha":"28/10/2026 12:03:07","casa":"bolsa","nombre":"Bolsa","valor":1562.40,"variacion":3.80},
-  {"fecha":"28/10/2026 12:03:07","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1656.60,"variacion":2.30},
-  {"fecha":"28/10/2026 12:03:07","casa":"mayorista","nombre":"Mayorista","valor":1537.00,"variacion":2.00},
   {"fecha":"28/10/2026 13:04:00","casa":"bolsa","nombre":"Bolsa","valor":1560.50,"variacion":-1.90},
   {"fecha":"28/10/2026 13:04:00","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1655.40,"variacion":-1.20},
   {"fecha":"28/10/2026 14:04:38","casa":"blue","nombre":"Blue","valor":1565.00,"variacion":-5.00},
@@ -48,5 +42,11 @@
   {"fecha":"31/10/2026 16:21:21","casa":"cripto","nombre":"Cripto","valor":1647.27,"variacion":-9.01},
   {"fecha":"31/10/2026 21:11:03","casa":"cripto","nombre":"Cripto","valor":1643.33,"variacion":-3.94},
   {"fecha":"01/11/2026 13:06:00","casa":"cripto","nombre":"Cripto","valor":1646.42,"variacion":3.09},
-  {"fecha":"01/11/2026 19:08:22","casa":"cripto","nombre":"Cripto","valor":1642.43,"variacion":-3.99}
+  {"fecha":"01/11/2026 19:08:22","casa":"cripto","nombre":"Cripto","valor":1642.43,"variacion":-3.99},
+  {"fecha":"02/11/2026 16:33:53","casa":"oficial","nombre":"Oficial","valor":1565.00,"variacion":5.00},
+  {"fecha":"02/11/2026 16:33:53","casa":"bolsa","nombre":"Bolsa","valor":1570.10,"variacion":-4.90},
+  {"fecha":"02/11/2026 16:33:53","casa":"contadoconliqui","nombre":"Contado con liquidación","valor":1659.80,"variacion":1.30},
+  {"fecha":"02/11/2026 16:33:53","casa":"mayorista","nombre":"Mayorista","valor":1545.00,"variacion":11.00},
+  {"fecha":"02/11/2026 16:33:53","casa":"cripto","nombre":"Cripto","valor":1658.99,"variacion":16.56},
+  {"fecha":"02/11/2026 16:33:53","casa":"tarjeta","nombre":"Tarjeta","valor":2034.50,"variacion":6.50}
 ]
