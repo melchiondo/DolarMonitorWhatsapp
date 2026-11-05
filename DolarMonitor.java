@@ -61,8 +61,16 @@ import java.util.regex.Pattern;
  * JSON con expresiones regulares, porque las respuestas son objetos planos.
  *
  * Variables de entorno:
- *   CALLMEBOT_PHONE     tu numero con codigo de pais, sin '+'
- *   CALLMEBOT_APIKEY    la api key de CallMeBot
+ *   WHATSAPP_TOKEN      token de la WhatsApp Cloud API de Meta (system user)
+ *   WHATSAPP_PHONE_ID   Phone number ID del numero que envia (el del bot)
+ *   WHATSAPP_TO         tu numero, con codigo de pais y sin '+'
+ *   WHATSAPP_API_VERSION version de la Graph API (default v24.0)
+ *   CALLMEBOT_PHONE     (viejo) tu numero, si todavia se usa CallMeBot
+ *   CALLMEBOT_APIKEY    (viejo) la api key de CallMeBot
+ *
+ *   Si WHATSAPP_TOKEN esta cargado se usa Meta; si no, CallMeBot.
+ *   Meta solo entrega texto libre gratis dentro de las 24 h siguientes a un
+ *   mensaje tuyo al bot: hay que escribirle (o responder una alerta) a diario.
  *   UMBRAL_PESOS        avisar si una cotizacion varia al menos $X (default 1)
  *   UMBRAL_PORCENTAJE   avisar si varia al menos X% (default 0 = desactivado)
  *   CAMPO               "venta" o "compra" (default venta)
@@ -106,6 +114,10 @@ public class DolarMonitor {
     private final List<String> casasDestacadas;
     private final String callmebotPhone;
     private final String callmebotApikey;
+    private final String whatsappToken;
+    private final String whatsappPhoneId;
+    private final String whatsappTo;
+    private final String whatsappApiVersion;
 
     private final double tnaPesos;
     private final LocalDate fechaReferencia;
@@ -157,6 +169,10 @@ public class DolarMonitor {
         this.campo = env("CAMPO", "venta");
         this.callmebotPhone = env("CALLMEBOT_PHONE", "");
         this.callmebotApikey = env("CALLMEBOT_APIKEY", "");
+        this.whatsappToken = env("WHATSAPP_TOKEN", "").trim();
+        this.whatsappPhoneId = env("WHATSAPP_PHONE_ID", "").trim();
+        this.whatsappTo = env("WHATSAPP_TO", "").trim().replace("+", "");
+        this.whatsappApiVersion = env("WHATSAPP_API_VERSION", "v24.0").trim();
 
         String casas = env("CASAS", "").trim();
         this.casasFiltro = casas.isEmpty()
@@ -588,8 +604,72 @@ public class DolarMonitor {
     }
 
     private void notificarWhatsapp(String texto) {
+        if (!whatsappToken.isEmpty()) {
+            notificarMeta(texto);
+        } else {
+            notificarCallmebot(texto);
+        }
+    }
+
+    /**
+     * WhatsApp Cloud API oficial de Meta. Manda texto libre, que es gratis
+     * mientras este abierta la ventana de 24 h que abre un mensaje del dueno al
+     * bot. Con la ventana cerrada Meta igual responde 200 y despues descarta el
+     * mensaje (error 131047, que solo se ve por webhook): por eso hay que
+     * escribirle al bot una vez por dia.
+     */
+    private void notificarMeta(String texto) {
+        if (whatsappPhoneId.isEmpty() || whatsappTo.isEmpty()) {
+            System.out.println("[" + ahora() + "] Falta WHATSAPP_PHONE_ID o WHATSAPP_TO, no se envia WhatsApp.");
+            return;
+        }
+        String url = "https://graph.facebook.com/" + whatsappApiVersion + "/" + whatsappPhoneId + "/messages";
+        String cuerpo = "{\"messaging_product\":\"whatsapp\",\"recipient_type\":\"individual\","
+                + "\"to\":\"" + jsonEscape(whatsappTo) + "\",\"type\":\"text\","
+                + "\"text\":{\"preview_url\":false,\"body\":\"" + jsonEscape(texto) + "\"}}";
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url)).timeout(Duration.ofSeconds(20))
+                    .header("Authorization", "Bearer " + whatsappToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(cuerpo, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> r = http.send(request, HttpResponse.BodyHandlers.ofString());
+            String resp = r.body();
+            System.out.println("[" + ahora() + "] Respuesta WhatsApp (Meta): " + r.statusCode()
+                    + " " + (resp.length() > 300 ? resp.substring(0, 300) : resp));
+        } catch (Exception e) {
+            System.out.println("[" + ahora() + "] Error enviando WhatsApp: " + e.getMessage());
+        }
+    }
+
+    /** Escapa un texto para meterlo entre comillas en un JSON. */
+    static String jsonEscape(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 16);
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+            switch (ch) {
+                case '"' -> sb.append("\\\"");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                default -> {
+                    if (ch < 0x20) {
+                        sb.append(String.format(Locale.ROOT, "\\u%04x", (int) ch));
+                    } else {
+                        sb.append(ch);
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    /** El envio viejo por CallMeBot, para no cortar las alertas mientras se migra. */
+    private void notificarCallmebot(String texto) {
         if (callmebotPhone.isEmpty() || callmebotApikey.isEmpty()) {
-            System.out.println("[" + ahora() + "] CallMeBot no configurado, no se envia WhatsApp.");
+            System.out.println("[" + ahora() + "] WhatsApp no configurado, no se envia.");
             return;
         }
         String url = "https://api.callmebot.com/whatsapp.php?phone=" + callmebotPhone

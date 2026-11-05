@@ -30,6 +30,11 @@ jobs:
     timeout-minutes: 60
 
     env:
+      # WhatsApp Cloud API oficial de Meta (ver WHATSAPP_META.md). Si
+      # WHATSAPP_TOKEN está vacío, se usa CallMeBot como antes.
+      WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+      WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+      WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
       CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
 
