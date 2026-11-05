@@ -60,9 +60,53 @@ Apenas `WHATSAPP_TOKEN` tiene valor, el monitor deja de usar CallMeBot.
 
 ## 4. Mantener abierta la ventana de 24 h
 
-Mandarle cualquier mensaje al número del bot una vez por día. Responder una
-alerta también cuenta. Para no depender de acordarse, automatizarlo en el
-celular a una hora fija (por ejemplo 9:30, antes de que abra el mercado).
+Meta solo entrega las alertas durante las 24 h siguientes a un mensaje tuyo
+al bot. Responder una alerta también cuenta. Para no depender de acordarse,
+se automatiza en el celular.
+
+### Android con MacroDroid (gratis)
+
+[MacroDroid](https://play.google.com/store/apps/details?id=com.arlosoft.macrodroid)
+es gratis hasta 5 macros; esto usa 2. La idea: la primera vez que desbloqueás
+el celular a la mañana y la primera después del mediodía, abre el chat con el
+bot, toca "Enviar" solo y vuelve al inicio. Tarda unos 4 segundos. Al mandar
+dos veces por día, nunca pasan más de 24 h entre mensaje y mensaje.
+
+Antes: agendá el número del bot y anotalo con código de país y sin `+`
+(el número de prueba que muestra Meta en API Setup).
+
+**Variable.** En MacroDroid: *Variables → +*, global, tipo booleano, nombre
+`hola_pendiente`, valor inicial `true`.
+
+**Macro 1: "Hola al bot"**
+
+- Disparador: *Pantalla → Pantalla desbloqueada* (en algunas versiones
+  *Dispositivo desbloqueado*).
+- Restricción: *Variable* `hola_pendiente` = `true`.
+- Acciones, en este orden:
+  1. *Abrir sitio web / URL*: `https://wa.me/NUMERO_DEL_BOT?text=hola`.
+     Si pregunta con qué abrirlo, elegí WhatsApp y "siempre".
+  2. *Esperar*: 3 segundos.
+  3. *Interacción con la interfaz (UI Interaction) → Clic*, por texto o
+     descripción: `Enviar` (o `Send` si el teléfono está en inglés). La
+     primera vez pide activar el servicio de accesibilidad de MacroDroid.
+  4. *Esperar*: 1 segundo.
+  5. *Pantalla de inicio*.
+  6. *Establecer variable*: `hola_pendiente` = `false`.
+
+**Macro 2: "Rearmar hola"**
+
+- Disparadores: *Día/Hora* a las 00:00 todos los días, y otro *Día/Hora* a
+  las 12:00 todos los días.
+- Acción: *Establecer variable*: `hola_pendiente` = `true`.
+
+**Ajustes para que no la mate el sistema:** en Android, *Ajustes → Apps →
+MacroDroid → Batería → Sin restricciones*.
+
+**Probarla:** en la Macro 1, menú *⋮ → Probar acciones*. Tiene que aparecer
+"hola" enviado en el chat con el bot. Si la macro abre el chat pero no envía,
+el clic no encontró el botón: en el paso 3 usá *Identificar* (el selector de
+elementos de MacroDroid) y tocá el botón de enviar de WhatsApp.
 
 ## Cómo verificar que anda
 
