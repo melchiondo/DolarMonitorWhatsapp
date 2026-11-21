@@ -116,6 +116,26 @@ aporta `(1 + ipc) ^ (días cubiertos / días del mes)`, igual que el carry, que
 también se cuenta por días. Contar meses enteros inflaría el primer y el
 último mes y desalinearía las dos carreras.
 
+### 10. WhatsApp va por la Cloud API oficial de Meta, solo con texto libre
+
+CallMeBot pasó a un plan "demo" con cupo: agrega "I need your support" al
+mensaje y, al llegar a 0, deja de entregar. Además se comía el `$1` de
+`$1.567,60`. Desde 11/2026 el envío va por la WhatsApp Cloud API de Meta
+(`notificarMeta()`); CallMeBot queda solo como respaldo si `WHATSAPP_TOKEN`
+está vacío.
+
+Costo cero depende de dos cosas, **no romperlas**:
+
+- **Nunca mandar plantillas** (templates). Se cobran desde la primera. El
+  texto libre es gratis dentro de la ventana de 24 h que abre un mensaje del
+  dueño al bot (hasta 1.000 por mes; se mandan unos 200).
+- **No cargar medio de pago en Meta.** Sin tarjeta, Meta no puede cobrar:
+  pasado el límite deja de entregar.
+
+Con la ventana cerrada Meta responde 200 igual y descarta el mensaje después
+(error 131047, solo visible por webhook). Por eso el dueño tiene que escribirle
+al bot una vez por día; lo ideal es automatizarlo desde su celular.
+
 ## Configuración
 
 Todo vive en el `env:` del workflow, **no hardcodeado en el Java** (el Java solo
@@ -123,6 +143,9 @@ tiene defaults que coinciden con los valores actuales):
 
 | Variable | Qué es |
 |---|---|
+| `WHATSAPP_TOKEN` | Secret. Token permanente (system user) de Meta |
+| `WHATSAPP_PHONE_ID` | Secret. Phone number ID del número que envía |
+| `WHATSAPP_TO` | Secret. Número del dueño, con código de país y sin `+` |
 | `UMBRAL_PESOS` | Variación mínima en $ para avisar |
 | `UMBRAL_PORCENTAJE` | Variación mínima en % (0 = desactivado) |
 | `CAMPO` | `venta` o `compra` |
